@@ -657,6 +657,10 @@ const GET_CHANNEL_MODEL_PRICES_QUERY = `
               }
             }
           }
+          serviceTierMultipliers {
+            serviceTier
+            multiplier
+          }
         }
       }
     }
@@ -697,6 +701,10 @@ const SAVE_CHANNEL_MODEL_PRICES_MUTATION = `
               }
             }
           }
+        }
+        serviceTierMultipliers {
+          serviceTier
+          multiplier
         }
       }
     }

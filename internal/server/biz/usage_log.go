@@ -27,7 +27,13 @@ type UsageLogService struct {
 	OnUsageLogCreated func()
 }
 
-func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage) ([]objects.CostItem, *float64, string) {
+func (s *UsageLogService) computeUsageCost(
+	ctx context.Context,
+	channelID int,
+	modelID string,
+	serviceTier string,
+	usage *llm.Usage,
+) ([]objects.CostItem, *float64, string) {
 	if usage == nil {
 		return nil, nil, ""
 	}
@@ -51,7 +57,7 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 	}
 
 	if modelPrice, ok := ch.cachedModelPrices[modelID]; ok {
-		items, total := ComputeUsageCost(usage, modelPrice.Price, time.Now())
+		items, total := ComputeUsageCost(usage, modelPrice.Price, time.Now(), serviceTier)
 
 		totalCost := total.InexactFloat64()
 		if log.DebugEnabled(ctx) {
@@ -87,6 +93,7 @@ type CreateUsageLogParams struct {
 	ProjectID     int
 	ChannelID     int
 	ActualModelID string // The channel actual model ID, not the request model ID.
+	ServiceTier   string
 	Usage         *llm.Usage
 	Source        usagelog.Source
 	Format        string
@@ -144,7 +151,7 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		priceReferenceID string
 	)
 
-	costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, params.ChannelID, params.ActualModelID, params.Usage)
+	costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, params.ChannelID, params.ActualModelID, params.ServiceTier, params.Usage)
 
 	mut = mut.
 		SetNillableTotalCost(totalCost).
@@ -191,6 +198,7 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 		ProjectID:     request.ProjectID,
 		ChannelID:     requestExec.ChannelID,
 		ActualModelID: requestExec.ModelID,
+		ServiceTier:   lo.FromPtr(request.ServiceTier),
 		Usage:         usage,
 		Source:        usagelog.Source(request.Source),
 		Format:        request.Format,

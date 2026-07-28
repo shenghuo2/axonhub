@@ -1787,6 +1787,10 @@ input CreateRequestInput {
   Reasoning effort used for reasoning models
   """
   reasoningEffort: String
+  """
+  Requested service tier used to process and price the request
+  """
+  serviceTier: String
   format: String
   """
   Request headers
@@ -4418,6 +4422,10 @@ type Request implements Node {
   Reasoning effort used for reasoning models
   """
   reasoningEffort: String
+  """
+  Requested service tier used to process and price the request
+  """
+  serviceTier: String
   format: String!
   """
   Request headers
@@ -5059,6 +5067,24 @@ input RequestWhereInput {
   reasoningEffortNotNil: Boolean
   reasoningEffortEqualFold: String
   reasoningEffortContainsFold: String
+  """
+  service_tier field predicates
+  """
+  serviceTier: String
+  serviceTierNEQ: String
+  serviceTierIn: [String!]
+  serviceTierNotIn: [String!]
+  serviceTierGT: String
+  serviceTierGTE: String
+  serviceTierLT: String
+  serviceTierLTE: String
+  serviceTierContains: String
+  serviceTierHasPrefix: String
+  serviceTierHasSuffix: String
+  serviceTierIsNil: Boolean
+  serviceTierNotNil: Boolean
+  serviceTierEqualFold: String
+  serviceTierContainsFold: String
   """
   format field predicates
   """

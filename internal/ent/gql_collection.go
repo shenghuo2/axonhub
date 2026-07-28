@@ -3767,6 +3767,11 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldReasoningEffort)
 				fieldSeen[request.FieldReasoningEffort] = struct{}{}
 			}
+		case "serviceTier":
+			if _, ok := fieldSeen[request.FieldServiceTier]; !ok {
+				selectedFields = append(selectedFields, request.FieldServiceTier)
+				fieldSeen[request.FieldServiceTier] = struct{}{}
+			}
 		case "format":
 			if _, ok := fieldSeen[request.FieldFormat]; !ok {
 				selectedFields = append(selectedFields, request.FieldFormat)

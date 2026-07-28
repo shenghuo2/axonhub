@@ -58,6 +58,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             modelID
             format
             reasoningEffort
+            serviceTier
             stream
             status
             clientIP
@@ -136,6 +137,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           updatedAt${apiKeyFields}${requestChannelFields}
           source
           modelID
+          serviceTier
           stream
           clientIP
           projectID
@@ -195,6 +197,7 @@ function buildRequestDetailPollingQuery(permissions: { canViewApiKeys: boolean; 
           updatedAt${apiKeyFields}${requestChannelFields}
           source
           modelID
+          serviceTier
           stream
           clientIP
           projectID

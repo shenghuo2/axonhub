@@ -191,6 +191,30 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         );
       },
     },
+    {
+      accessorKey: 'serviceTier',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.serviceTier')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const serviceTier = row.original.serviceTier;
+        if (!serviceTier) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        return (
+          <Badge
+            className={
+              serviceTier === 'fast'
+                ? 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
+                : 'border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
+            }
+          >
+            {serviceTier === 'fast' ? 'Fast' : serviceTier}
+          </Badge>
+        );
+      },
+    },
 
     {
       id: 'stream',

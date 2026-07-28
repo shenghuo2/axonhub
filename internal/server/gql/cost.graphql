@@ -8,6 +8,8 @@ type CostItem {
   itemCode: PriceItemCode!
   quantity: Int!
   tierBreakdown: [TierCost!]
+  baseSubtotal: Decimal
+  priceMultiplier: Decimal
   subtotal: Decimal!
 }
 
@@ -21,5 +23,7 @@ input CostItemInput {
   itemCode: PriceItemCode!
   quantity: Int!
   tierBreakdown: [TierCostInput!]
+  baseSubtotal: Decimal
+  priceMultiplier: Decimal
   subtotal: Decimal!
 }

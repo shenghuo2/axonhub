@@ -444,9 +444,16 @@ export const priceScheduleSchema = z.object({
 });
 export type PriceSchedule = z.infer<typeof priceScheduleSchema>;
 
+export const serviceTierMultiplierSchema = z.object({
+  serviceTier: z.string(),
+  multiplier: z.union([z.string(), z.number()]),
+});
+export type ServiceTierMultiplier = z.infer<typeof serviceTierMultiplierSchema>;
+
 export const modelPriceSchema = z.object({
   items: z.array(modelPriceItemSchema),
   schedule: priceScheduleSchema.optional().nullable(),
+  serviceTierMultipliers: z.array(serviceTierMultiplierSchema).optional().nullable(),
 });
 export type ModelPrice = z.infer<typeof modelPriceSchema>;
 

@@ -129,6 +129,17 @@ const createPriceFormSchema = (t: (key: string) => string) =>
               })
               .optional()
               .nullable(),
+            serviceTierMultipliers: z
+              .array(
+                z.object({
+                  serviceTier: z.string().trim().min(1, { message: t('price.validation.serviceTierRequired') }),
+                  multiplier: z.string().refine((value) => Number(value) > 0, {
+                    message: t('price.validation.multiplierPositive'),
+                  }),
+                })
+              )
+              .optional()
+              .nullable(),
           }),
         })
       ),
@@ -207,6 +218,26 @@ const createPriceFormSchema = (t: (key: string) => string) =>
       };
 
       data.prices.forEach((price, priceIndex) => {
+        const serviceTierIndexes = new Map<string, number[]>();
+        (price.price.serviceTierMultipliers || []).forEach((entry, entryIndex) => {
+          const serviceTier = entry.serviceTier.trim().toLowerCase();
+          if (!serviceTierIndexes.has(serviceTier)) {
+            serviceTierIndexes.set(serviceTier, []);
+          }
+          serviceTierIndexes.get(serviceTier)!.push(entryIndex);
+        });
+        serviceTierIndexes.forEach((indexes) => {
+          if (indexes.length > 1) {
+            indexes.forEach((index) => {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: t('price.validation.duplicateServiceTier'),
+                path: ['prices', priceIndex, 'price', 'serviceTierMultipliers', index, 'serviceTier'],
+              });
+            });
+          }
+        });
+
         // Check for duplicate item codes
         const itemCodes = new Map<string, number[]>();
         price.price.items.forEach((item, itemIndex) => {
@@ -382,6 +413,11 @@ function mapServerPricesToFormData(currentPrices: ChannelModelPrices): PriceForm
               })),
             }
           : null,
+        serviceTierMultipliers:
+          p.price.serviceTierMultipliers?.map((entry) => ({
+            serviceTier: entry.serviceTier,
+            multiplier: entry.multiplier.toString(),
+          })) || [],
       },
     })),
   };
@@ -859,6 +895,11 @@ export function ChannelsModelPriceDialog() {
                   })),
                 }
               : null,
+            serviceTierMultipliers:
+              p.price.serviceTierMultipliers?.map((entry) => ({
+                serviceTier: entry.serviceTier.trim().toLowerCase(),
+                multiplier: entry.multiplier,
+              })) || [],
           },
         }));
 
@@ -878,6 +919,7 @@ export function ChannelsModelPriceDialog() {
     append({
       modelId: '',
       price: {
+        serviceTierMultipliers: [],
         items: [
           {
             itemCode: 'prompt_tokens',
@@ -918,7 +960,7 @@ export function ChannelsModelPriceDialog() {
 
       append({
         modelId,
-        price: { items: buildItemsFromProviderModel(found.model, multiplier) },
+        price: { items: buildItemsFromProviderModel(found.model, multiplier), serviceTierMultipliers: [] },
       });
       toast.success(t('price.apply.added', { modelId }));
     },
@@ -1109,7 +1151,7 @@ export function ChannelsModelPriceDialog() {
                           if (existingModelIds.has(modelId)) return;
                           append({
                             modelId,
-                            price: { items: buildItemsFromProviderModel(found.model, multiplier) },
+                            price: { items: buildItemsFromProviderModel(found.model, multiplier), serviceTierMultipliers: [] },
                           });
                           added += 1;
                         });

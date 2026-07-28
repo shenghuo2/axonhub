@@ -8,8 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -101,6 +103,45 @@ func createTestRequestService(t *testing.T, client *ent.Client) *biz.RequestServ
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
 	return biz.NewRequestService(client, systemService.CacheConfig, systemService, usageLogService, dataStorageService, liveStreamRegistry)
+}
+
+func TestRequestService_CreateRequestRecordsServiceTier(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	requestService := createTestRequestService(t, client)
+	require.NoError(t, requestService.SystemService.SetStoragePolicy(ctx, &biz.StoragePolicy{
+		StoreRequestBody: false,
+	}))
+
+	serviceTier := "  FaSt  "
+	created, err := requestService.CreateRequest(
+		ctx,
+		&llm.Request{Model: "gpt-5.4", ServiceTier: &serviceTier},
+		&httpclient.Request{JSONBody: []byte(`{"model":"gpt-5.4","service_tier":"fast"}`)},
+		llm.APIFormatOpenAIChatCompletion,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, created.ServiceTier)
+	require.Equal(t, "fast", *created.ServiceTier)
+	require.JSONEq(t, `{}`, string(created.RequestBody), "service tier must not depend on request body storage")
+
+	require.NoError(t, requestService.MarkRequestFailed(ctx, created.ID))
+	failed, err := client.Request.Get(ctx, created.ID)
+	require.NoError(t, err)
+	require.Equal(t, request.StatusFailed, failed.Status)
+	require.NotNil(t, failed.ServiceTier)
+	require.Equal(t, "fast", *failed.ServiceTier)
+
+	withoutTier, err := requestService.CreateRequest(
+		ctx,
+		&llm.Request{Model: "gpt-5.4"},
+		&httpclient.Request{JSONBody: []byte(`{"model":"gpt-5.4"}`)},
+		llm.APIFormatOpenAIChatCompletion,
+	)
+	require.NoError(t, err)
+	require.Nil(t, withoutTier.ServiceTier)
 }
 
 // newInboundPersistentStreamHelper creates a configured InboundPersistentStream for testing.

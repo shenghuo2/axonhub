@@ -603,10 +603,12 @@ type ComplexityRoot struct {
 	}
 
 	CostItem struct {
-		ItemCode      func(childComplexity int) int
-		Quantity      func(childComplexity int) int
-		Subtotal      func(childComplexity int) int
-		TierBreakdown func(childComplexity int) int
+		BaseSubtotal    func(childComplexity int) int
+		ItemCode        func(childComplexity int) int
+		PriceMultiplier func(childComplexity int) int
+		Quantity        func(childComplexity int) int
+		Subtotal        func(childComplexity int) int
+		TierBreakdown   func(childComplexity int) int
 	}
 
 	CostStatsByAPIKey struct {
@@ -895,8 +897,9 @@ type ComplexityRoot struct {
 	}
 
 	ModelPrice struct {
-		Items    func(childComplexity int) int
-		Schedule func(childComplexity int) int
+		Items                  func(childComplexity int) int
+		Schedule               func(childComplexity int) int
+		ServiceTierMultipliers func(childComplexity int) int
 	}
 
 	ModelPriceItem struct {
@@ -1432,6 +1435,7 @@ type ComplexityRoot struct {
 		RequestHeaders             func(childComplexity int) int
 		ResponseBody               func(childComplexity int) int
 		ResponseChunks             func(childComplexity int) int
+		ServiceTier                func(childComplexity int) int
 		Source                     func(childComplexity int) int
 		Status                     func(childComplexity int) int
 		Stream                     func(childComplexity int) int
@@ -1604,6 +1608,11 @@ type ComplexityRoot struct {
 		RequestSpans  func(childComplexity int) int
 		ResponseSpans func(childComplexity int) int
 		StartTime     func(childComplexity int) int
+	}
+
+	ServiceTierMultiplier struct {
+		Multiplier  func(childComplexity int) int
+		ServiceTier func(childComplexity int) int
 	}
 
 	SignInPayload struct {
@@ -4380,12 +4389,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ClearChannelOverrideTemplatesPayload.Updated(childComplexity), true
 
+	case "CostItem.baseSubtotal":
+		if e.complexity.CostItem.BaseSubtotal == nil {
+			break
+		}
+
+		return e.complexity.CostItem.BaseSubtotal(childComplexity), true
 	case "CostItem.itemCode":
 		if e.complexity.CostItem.ItemCode == nil {
 			break
 		}
 
 		return e.complexity.CostItem.ItemCode(childComplexity), true
+	case "CostItem.priceMultiplier":
+		if e.complexity.CostItem.PriceMultiplier == nil {
+			break
+		}
+
+		return e.complexity.CostItem.PriceMultiplier(childComplexity), true
 	case "CostItem.quantity":
 		if e.complexity.CostItem.Quantity == nil {
 			break
@@ -5423,6 +5444,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelPrice.Schedule(childComplexity), true
+	case "ModelPrice.serviceTierMultipliers":
+		if e.complexity.ModelPrice.ServiceTierMultipliers == nil {
+			break
+		}
+
+		return e.complexity.ModelPrice.ServiceTierMultipliers(childComplexity), true
 
 	case "ModelPriceItem.itemCode":
 		if e.complexity.ModelPriceItem.ItemCode == nil {
@@ -8726,6 +8753,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.ResponseChunks(childComplexity), true
+	case "Request.serviceTier":
+		if e.complexity.Request.ServiceTier == nil {
+			break
+		}
+
+		return e.complexity.Request.ServiceTier(childComplexity), true
 	case "Request.source":
 		if e.complexity.Request.Source == nil {
 			break
@@ -9411,6 +9444,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Segment.StartTime(childComplexity), true
+
+	case "ServiceTierMultiplier.multiplier":
+		if e.complexity.ServiceTierMultiplier.Multiplier == nil {
+			break
+		}
+
+		return e.complexity.ServiceTierMultiplier.Multiplier(childComplexity), true
+	case "ServiceTierMultiplier.serviceTier":
+		if e.complexity.ServiceTierMultiplier.ServiceTier == nil {
+			break
+		}
+
+		return e.complexity.ServiceTierMultiplier.ServiceTier(childComplexity), true
 
 	case "SignInPayload.token":
 		if e.complexity.SignInPayload.Token == nil {
@@ -11397,6 +11443,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSaveChannelEndpointsInput,
 		ec.unmarshalInputSaveChannelModelPriceInput,
 		ec.unmarshalInputSaveProxyPresetInput,
+		ec.unmarshalInputServiceTierMultiplierInput,
 		ec.unmarshalInputSignInInput,
 		ec.unmarshalInputSystemOrder,
 		ec.unmarshalInputSystemWhereInput,
@@ -21317,6 +21364,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_price(_ context.Conte
 				return ec.fieldContext_ModelPrice_items(ctx, field)
 			case "schedule":
 				return ec.fieldContext_ModelPrice_schedule(ctx, field)
+			case "serviceTierMultipliers":
+				return ec.fieldContext_ModelPrice_serviceTierMultipliers(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelPrice", field.Name)
 		},
@@ -21882,6 +21931,8 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersion_price(_ contex
 				return ec.fieldContext_ModelPrice_items(ctx, field)
 			case "schedule":
 				return ec.fieldContext_ModelPrice_schedule(ctx, field)
+			case "serviceTierMultipliers":
+				return ec.fieldContext_ModelPrice_serviceTierMultipliers(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelPrice", field.Name)
 		},
@@ -25210,6 +25261,64 @@ func (ec *executionContext) fieldContext_CostItem_tierBreakdown(_ context.Contex
 				return ec.fieldContext_TierCost_subtotal(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TierCost", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_baseSubtotal(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_baseSubtotal,
+		func(ctx context.Context) (any, error) {
+			return obj.BaseSubtotal, nil
+		},
+		nil,
+		ec.marshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_baseSubtotal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CostItem_priceMultiplier(ctx context.Context, field graphql.CollectedField, obj *objects.CostItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CostItem_priceMultiplier,
+		func(ctx context.Context) (any, error) {
+			return obj.PriceMultiplier, nil
+		},
+		nil,
+		ec.marshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostItem_priceMultiplier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostItem",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30364,6 +30473,41 @@ func (ec *executionContext) fieldContext_ModelPrice_schedule(_ context.Context, 
 				return ec.fieldContext_PriceSchedule_overrides(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PriceSchedule", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelPrice_serviceTierMultipliers(ctx context.Context, field graphql.CollectedField, obj *objects.ModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelPrice_serviceTierMultipliers,
+		func(ctx context.Context) (any, error) {
+			return obj.ServiceTierMultipliers, nil
+		},
+		nil,
+		ec.marshalNServiceTierMultiplier2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐServiceTierMultiplierᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelPrice_serviceTierMultipliers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "serviceTier":
+				return ec.fieldContext_ServiceTierMultiplier_serviceTier(ctx, field)
+			case "multiplier":
+				return ec.fieldContext_ServiceTierMultiplier_multiplier(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ServiceTierMultiplier", field.Name)
 		},
 	}
 	return fc, nil
@@ -46391,6 +46535,35 @@ func (ec *executionContext) fieldContext_Request_reasoningEffort(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Request_serviceTier(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Request_serviceTier,
+		func(ctx context.Context) (any, error) {
+			return obj.ServiceTier, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Request_serviceTier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Request",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Request_format(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -47460,6 +47633,8 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "reasoningEffort":
 				return ec.fieldContext_Request_reasoningEffort(ctx, field)
+			case "serviceTier":
+				return ec.fieldContext_Request_serviceTier(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
@@ -48255,6 +48430,8 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "reasoningEffort":
 				return ec.fieldContext_Request_reasoningEffort(ctx, field)
+			case "serviceTier":
+				return ec.fieldContext_Request_serviceTier(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
@@ -50758,6 +50935,64 @@ func (ec *executionContext) fieldContext_Segment_duration(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceTierMultiplier_serviceTier(ctx context.Context, field graphql.CollectedField, obj *objects.ServiceTierMultiplier) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceTierMultiplier_serviceTier,
+		func(ctx context.Context) (any, error) {
+			return obj.ServiceTier, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceTierMultiplier_serviceTier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceTierMultiplier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ServiceTierMultiplier_multiplier(ctx context.Context, field graphql.CollectedField, obj *objects.ServiceTierMultiplier) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ServiceTierMultiplier_multiplier,
+		func(ctx context.Context) (any, error) {
+			return obj.Multiplier, nil
+		},
+		nil,
+		ec.marshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ServiceTierMultiplier_multiplier(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ServiceTierMultiplier",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Decimal does not have child fields")
 		},
 	}
 	return fc, nil
@@ -56782,6 +57017,10 @@ func (ec *executionContext) fieldContext_UsageLog_costItems(_ context.Context, f
 				return ec.fieldContext_CostItem_quantity(ctx, field)
 			case "tierBreakdown":
 				return ec.fieldContext_CostItem_tierBreakdown(ctx, field)
+			case "baseSubtotal":
+				return ec.fieldContext_CostItem_baseSubtotal(ctx, field)
+			case "priceMultiplier":
+				return ec.fieldContext_CostItem_priceMultiplier(ctx, field)
 			case "subtotal":
 				return ec.fieldContext_CostItem_subtotal(ctx, field)
 			}
@@ -56864,6 +57103,8 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_modelID(ctx, field)
 			case "reasoningEffort":
 				return ec.fieldContext_Request_reasoningEffort(ctx, field)
+			case "serviceTier":
+				return ec.fieldContext_Request_serviceTier(ctx, field)
 			case "format":
 				return ec.fieldContext_Request_format(ctx, field)
 			case "requestHeaders":
@@ -67925,7 +68166,7 @@ func (ec *executionContext) unmarshalInputCostItemInput(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"itemCode", "quantity", "tierBreakdown", "subtotal"}
+	fieldsInOrder := [...]string{"itemCode", "quantity", "tierBreakdown", "baseSubtotal", "priceMultiplier", "subtotal"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67953,6 +68194,20 @@ func (ec *executionContext) unmarshalInputCostItemInput(ctx context.Context, obj
 				return it, err
 			}
 			it.TierBreakdown = data
+		case "baseSubtotal":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseSubtotal"))
+			data, err := ec.unmarshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseSubtotal = data
+		case "priceMultiplier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("priceMultiplier"))
+			data, err := ec.unmarshalODecimal2ᚖgithubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PriceMultiplier = data
 		case "subtotal":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subtotal"))
 			data, err := ec.unmarshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
@@ -68639,7 +68894,7 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"source", "modelID", "reasoningEffort", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
+	fieldsInOrder := [...]string{"source", "modelID", "reasoningEffort", "serviceTier", "format", "requestHeaders", "requestBody", "responseBody", "responseChunks", "externalID", "status", "stream", "clientIP", "metricsLatencyMs", "metricsFirstTokenLatencyMs", "metricsReasoningDurationMs", "contentSaved", "contentStorageID", "contentStorageKey", "contentSavedAt", "apiKeyID", "projectID", "traceID", "dataStorageID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68667,6 +68922,13 @@ func (ec *executionContext) unmarshalInputCreateRequestInput(ctx context.Context
 				return it, err
 			}
 			it.ReasoningEffort = data
+		case "serviceTier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTier"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTier = data
 		case "format":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("format"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -70971,7 +71233,7 @@ func (ec *executionContext) unmarshalInputModelPriceInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"items", "schedule"}
+	fieldsInOrder := [...]string{"items", "schedule", "serviceTierMultipliers"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70992,6 +71254,13 @@ func (ec *executionContext) unmarshalInputModelPriceInput(ctx context.Context, o
 				return it, err
 			}
 			it.Schedule = data
+		case "serviceTierMultipliers":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierMultipliers"))
+			data, err := ec.unmarshalOServiceTierMultiplierInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐServiceTierMultiplierᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierMultipliers = data
 		}
 	}
 
@@ -77670,7 +77939,7 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "reasoningEffort", "reasoningEffortNEQ", "reasoningEffortIn", "reasoningEffortNotIn", "reasoningEffortGT", "reasoningEffortGTE", "reasoningEffortLT", "reasoningEffortLTE", "reasoningEffortContains", "reasoningEffortHasPrefix", "reasoningEffortHasSuffix", "reasoningEffortIsNil", "reasoningEffortNotNil", "reasoningEffortEqualFold", "reasoningEffortContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "traceID", "traceIDNEQ", "traceIDIn", "traceIDNotIn", "traceIDIsNil", "traceIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "reasoningEffort", "reasoningEffortNEQ", "reasoningEffortIn", "reasoningEffortNotIn", "reasoningEffortGT", "reasoningEffortGTE", "reasoningEffortLT", "reasoningEffortLTE", "reasoningEffortContains", "reasoningEffortHasPrefix", "reasoningEffortHasSuffix", "reasoningEffortIsNil", "reasoningEffortNotNil", "reasoningEffortEqualFold", "reasoningEffortContainsFold", "serviceTier", "serviceTierNEQ", "serviceTierIn", "serviceTierNotIn", "serviceTierGT", "serviceTierGTE", "serviceTierLT", "serviceTierLTE", "serviceTierContains", "serviceTierHasPrefix", "serviceTierHasSuffix", "serviceTierIsNil", "serviceTierNotNil", "serviceTierEqualFold", "serviceTierContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "clientIP", "clientIPNEQ", "clientIPIn", "clientIPNotIn", "clientIPGT", "clientIPGTE", "clientIPLT", "clientIPLTE", "clientIPContains", "clientIPHasPrefix", "clientIPHasSuffix", "clientIPEqualFold", "clientIPContainsFold", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "contentSaved", "contentSavedNEQ", "contentStorageID", "contentStorageIDNEQ", "contentStorageIDIn", "contentStorageIDNotIn", "contentStorageIDGT", "contentStorageIDGTE", "contentStorageIDLT", "contentStorageIDLTE", "contentStorageIDIsNil", "contentStorageIDNotNil", "contentStorageKey", "contentStorageKeyNEQ", "contentStorageKeyIn", "contentStorageKeyNotIn", "contentStorageKeyGT", "contentStorageKeyGTE", "contentStorageKeyLT", "contentStorageKeyLTE", "contentStorageKeyContains", "contentStorageKeyHasPrefix", "contentStorageKeyHasSuffix", "contentStorageKeyIsNil", "contentStorageKeyNotNil", "contentStorageKeyEqualFold", "contentStorageKeyContainsFold", "contentSavedAt", "contentSavedAtNEQ", "contentSavedAtIn", "contentSavedAtNotIn", "contentSavedAtGT", "contentSavedAtGTE", "contentSavedAtLT", "contentSavedAtLTE", "contentSavedAtIsNil", "contentSavedAtNotNil", "hasAPIKey", "hasAPIKeyWith", "hasProject", "hasProjectWith", "hasTrace", "hasTraceWith", "hasDataStorage", "hasDataStorageWith", "hasExecutions", "hasExecutionsWith", "hasChannel", "hasChannelWith", "hasUsageLogs", "hasUsageLogsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -78340,6 +78609,111 @@ func (ec *executionContext) unmarshalInputRequestWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.ReasoningEffortContainsFold = data
+		case "serviceTier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTier"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTier = data
+		case "serviceTierNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierNEQ = data
+		case "serviceTierIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierIn = data
+		case "serviceTierNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierNotIn = data
+		case "serviceTierGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierGT = data
+		case "serviceTierGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierGTE = data
+		case "serviceTierLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierLT = data
+		case "serviceTierLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierLTE = data
+		case "serviceTierContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierContains = data
+		case "serviceTierHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierHasPrefix = data
+		case "serviceTierHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierHasSuffix = data
+		case "serviceTierIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierIsNil = data
+		case "serviceTierNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierNotNil = data
+		case "serviceTierEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierEqualFold = data
+		case "serviceTierContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTierContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTierContainsFold = data
 		case "format":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("format"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -80104,6 +80478,40 @@ func (ec *executionContext) unmarshalInputSaveProxyPresetInput(ctx context.Conte
 				return it, err
 			}
 			it.Password = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputServiceTierMultiplierInput(ctx context.Context, obj any) (objects.ServiceTierMultiplier, error) {
+	var it objects.ServiceTierMultiplier
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"serviceTier", "multiplier"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "serviceTier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("serviceTier"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ServiceTier = data
+		case "multiplier":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("multiplier"))
+			data, err := ec.unmarshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Multiplier = data
 		}
 	}
 
@@ -92642,6 +93050,10 @@ func (ec *executionContext) _CostItem(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "tierBreakdown":
 			out.Values[i] = ec._CostItem_tierBreakdown(ctx, field, obj)
+		case "baseSubtotal":
+			out.Values[i] = ec._CostItem_baseSubtotal(ctx, field, obj)
+		case "priceMultiplier":
+			out.Values[i] = ec._CostItem_priceMultiplier(ctx, field, obj)
 		case "subtotal":
 			out.Values[i] = ec._CostItem_subtotal(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -94949,6 +95361,11 @@ func (ec *executionContext) _ModelPrice(ctx context.Context, sel ast.SelectionSe
 			}
 		case "schedule":
 			out.Values[i] = ec._ModelPrice_schedule(ctx, field, obj)
+		case "serviceTierMultipliers":
+			out.Values[i] = ec._ModelPrice_serviceTierMultipliers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -100605,6 +101022,8 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "reasoningEffort":
 			out.Values[i] = ec._Request_reasoningEffort(ctx, field, obj)
+		case "serviceTier":
+			out.Values[i] = ec._Request_serviceTier(ctx, field, obj)
 		case "format":
 			out.Values[i] = ec._Request_format(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -102666,6 +103085,50 @@ func (ec *executionContext) _Segment(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Segment_duration(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var serviceTierMultiplierImplementors = []string{"ServiceTierMultiplier"}
+
+func (ec *executionContext) _ServiceTierMultiplier(ctx context.Context, sel ast.SelectionSet, obj *objects.ServiceTierMultiplier) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, serviceTierMultiplierImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ServiceTierMultiplier")
+		case "serviceTier":
+			out.Values[i] = ec._ServiceTierMultiplier_serviceTier(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "multiplier":
+			out.Values[i] = ec._ServiceTierMultiplier_multiplier(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -112569,6 +113032,59 @@ func (ec *executionContext) marshalNSegment2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 	return ec._Segment(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNServiceTierMultiplier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐServiceTierMultiplier(ctx context.Context, sel ast.SelectionSet, v objects.ServiceTierMultiplier) graphql.Marshaler {
+	return ec._ServiceTierMultiplier(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNServiceTierMultiplier2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐServiceTierMultiplierᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ServiceTierMultiplier) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNServiceTierMultiplier2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐServiceTierMultiplier(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNServiceTierMultiplierInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐServiceTierMultiplier(ctx context.Context, v any) (objects.ServiceTierMultiplier, error) {
+	res, err := ec.unmarshalInputServiceTierMultiplierInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNSpan2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpan(ctx context.Context, sel ast.SelectionSet, v biz.Span) graphql.Marshaler {
 	return ec._Span(ctx, sel, &v)
 }
@@ -119339,6 +119855,24 @@ func (ec *executionContext) marshalOSegment2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 		return graphql.Null
 	}
 	return ec._Segment(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOServiceTierMultiplierInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐServiceTierMultiplierᚄ(ctx context.Context, v any) ([]objects.ServiceTierMultiplier, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.ServiceTierMultiplier, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNServiceTierMultiplierInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐServiceTierMultiplier(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOSpan2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSpanᚄ(ctx context.Context, sel ast.SelectionSet, v []biz.Span) graphql.Marshaler {

@@ -16056,6 +16056,7 @@ type RequestMutation struct {
 	source                            *request.Source
 	model_id                          *string
 	reasoning_effort                  *string
+	service_tier                      *string
 	format                            *string
 	request_headers                   *objects.JSONRawMessage
 	appendrequest_headers             objects.JSONRawMessage
@@ -16574,6 +16575,55 @@ func (m *RequestMutation) ReasoningEffortCleared() bool {
 func (m *RequestMutation) ResetReasoningEffort() {
 	m.reasoning_effort = nil
 	delete(m.clearedFields, request.FieldReasoningEffort)
+}
+
+// SetServiceTier sets the "service_tier" field.
+func (m *RequestMutation) SetServiceTier(s string) {
+	m.service_tier = &s
+}
+
+// ServiceTier returns the value of the "service_tier" field in the mutation.
+func (m *RequestMutation) ServiceTier() (r string, exists bool) {
+	v := m.service_tier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldServiceTier returns the old "service_tier" field's value of the Request entity.
+// If the Request object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestMutation) OldServiceTier(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldServiceTier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldServiceTier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldServiceTier: %w", err)
+	}
+	return oldValue.ServiceTier, nil
+}
+
+// ClearServiceTier clears the value of the "service_tier" field.
+func (m *RequestMutation) ClearServiceTier() {
+	m.service_tier = nil
+	m.clearedFields[request.FieldServiceTier] = struct{}{}
+}
+
+// ServiceTierCleared returns if the "service_tier" field was cleared in this mutation.
+func (m *RequestMutation) ServiceTierCleared() bool {
+	_, ok := m.clearedFields[request.FieldServiceTier]
+	return ok
+}
+
+// ResetServiceTier resets all changes to the "service_tier" field.
+func (m *RequestMutation) ResetServiceTier() {
+	m.service_tier = nil
+	delete(m.clearedFields, request.FieldServiceTier)
 }
 
 // SetFormat sets the "format" field.
@@ -17755,7 +17805,7 @@ func (m *RequestMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestMutation) Fields() []string {
-	fields := make([]string, 0, 26)
+	fields := make([]string, 0, 27)
 	if m.created_at != nil {
 		fields = append(fields, request.FieldCreatedAt)
 	}
@@ -17782,6 +17832,9 @@ func (m *RequestMutation) Fields() []string {
 	}
 	if m.reasoning_effort != nil {
 		fields = append(fields, request.FieldReasoningEffort)
+	}
+	if m.service_tier != nil {
+		fields = append(fields, request.FieldServiceTier)
 	}
 	if m.format != nil {
 		fields = append(fields, request.FieldFormat)
@@ -17860,6 +17913,8 @@ func (m *RequestMutation) Field(name string) (ent.Value, bool) {
 		return m.ModelID()
 	case request.FieldReasoningEffort:
 		return m.ReasoningEffort()
+	case request.FieldServiceTier:
+		return m.ServiceTier()
 	case request.FieldFormat:
 		return m.Format()
 	case request.FieldRequestHeaders:
@@ -17921,6 +17976,8 @@ func (m *RequestMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldModelID(ctx)
 	case request.FieldReasoningEffort:
 		return m.OldReasoningEffort(ctx)
+	case request.FieldServiceTier:
+		return m.OldServiceTier(ctx)
 	case request.FieldFormat:
 		return m.OldFormat(ctx)
 	case request.FieldRequestHeaders:
@@ -18026,6 +18083,13 @@ func (m *RequestMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetReasoningEffort(v)
+		return nil
+	case request.FieldServiceTier:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetServiceTier(v)
 		return nil
 	case request.FieldFormat:
 		v, ok := value.(string)
@@ -18239,6 +18303,9 @@ func (m *RequestMutation) ClearedFields() []string {
 	if m.FieldCleared(request.FieldReasoningEffort) {
 		fields = append(fields, request.FieldReasoningEffort)
 	}
+	if m.FieldCleared(request.FieldServiceTier) {
+		fields = append(fields, request.FieldServiceTier)
+	}
 	if m.FieldCleared(request.FieldRequestHeaders) {
 		fields = append(fields, request.FieldRequestHeaders)
 	}
@@ -18297,6 +18364,9 @@ func (m *RequestMutation) ClearField(name string) error {
 		return nil
 	case request.FieldReasoningEffort:
 		m.ClearReasoningEffort()
+		return nil
+	case request.FieldServiceTier:
+		m.ClearServiceTier()
 		return nil
 	case request.FieldRequestHeaders:
 		m.ClearRequestHeaders()
@@ -18365,6 +18435,9 @@ func (m *RequestMutation) ResetField(name string) error {
 		return nil
 	case request.FieldReasoningEffort:
 		m.ResetReasoningEffort()
+		return nil
+	case request.FieldServiceTier:
+		m.ResetServiceTier()
 		return nil
 	case request.FieldFormat:
 		m.ResetFormat()

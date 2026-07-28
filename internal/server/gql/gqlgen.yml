@@ -409,6 +409,12 @@ models:
   ModelPriceInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelPrice
+  ServiceTierMultiplier:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ServiceTierMultiplier
+  ServiceTierMultiplierInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ServiceTierMultiplier
   ModelPriceItem:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelPriceItem

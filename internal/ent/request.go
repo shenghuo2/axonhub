@@ -42,6 +42,8 @@ type Request struct {
 	ModelID string `json:"model_id,omitempty"`
 	// Reasoning effort used for reasoning models
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
+	// Requested service tier used to process and price the request
+	ServiceTier *string `json:"service_tier,omitempty"`
 	// Format holds the value of the "format" field.
 	Format string `json:"format,omitempty"`
 	// Request headers
@@ -192,7 +194,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldMetricsReasoningDurationMs, request.FieldContentStorageID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldReasoningEffort, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
+		case request.FieldSource, request.FieldModelID, request.FieldReasoningEffort, request.FieldServiceTier, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldContentSavedAt:
 			values[i] = new(sql.NullTime)
@@ -270,6 +272,13 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field reasoning_effort", values[i])
 			} else if value.Valid {
 				_m.ReasoningEffort = value.String
+			}
+		case request.FieldServiceTier:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field service_tier", values[i])
+			} else if value.Valid {
+				_m.ServiceTier = new(string)
+				*_m.ServiceTier = value.String
 			}
 		case request.FieldFormat:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -484,6 +493,11 @@ func (_m *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("reasoning_effort=")
 	builder.WriteString(_m.ReasoningEffort)
+	builder.WriteString(", ")
+	if v := _m.ServiceTier; v != nil {
+		builder.WriteString("service_tier=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("format=")
 	builder.WriteString(_m.Format)

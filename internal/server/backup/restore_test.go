@@ -785,6 +785,8 @@ func TestBackupService_Restore_UsageStatsWithRequestLogs(t *testing.T) {
 	require.Len(t, requests, 1)
 	require.JSONEq(t, `{"model":"gpt-4"}`, string(requests[0].RequestBody))
 	require.Equal(t, "127.0.0.1", requests[0].ClientIP)
+	require.NotNil(t, requests[0].ServiceTier)
+	require.Equal(t, "fast", *requests[0].ServiceTier)
 
 	usageLogs, err := client.UsageLog.Query().All(ctx)
 	require.NoError(t, err)
@@ -793,4 +795,14 @@ func TestBackupService_Restore_UsageStatsWithRequestLogs(t *testing.T) {
 	require.Equal(t, int64(150), usageLogs[0].TotalTokens)
 	require.NotNil(t, usageLogs[0].TotalCost)
 	require.Equal(t, *usage.TotalCost, *usageLogs[0].TotalCost)
+
+	err = service.Restore(ctx, data, RestoreOptions{
+		IncludeUsageStats:  true,
+		IncludeRequestLogs: true,
+	})
+	require.NoError(t, err)
+
+	requests, err = client.Request.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, requests, 1, "restoring the same tiered request must not create a conflict duplicate")
 }

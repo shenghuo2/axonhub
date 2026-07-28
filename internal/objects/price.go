@@ -2,6 +2,7 @@ package objects
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -182,6 +183,24 @@ func (p *ModelPrice) Validate() error {
 		}
 	}
 
+	seenServiceTiers := make(map[string]struct{}, len(p.ServiceTierMultipliers))
+	for idx := range p.ServiceTierMultipliers {
+		entry := &p.ServiceTierMultipliers[idx]
+		serviceTier := strings.ToLower(strings.TrimSpace(entry.ServiceTier))
+		if serviceTier == "" {
+			return fmt.Errorf("serviceTierMultipliers[%d].serviceTier is required", idx)
+		}
+
+		if _, ok := seenServiceTiers[serviceTier]; ok {
+			return fmt.Errorf("serviceTierMultipliers[%d].serviceTier is duplicated", idx)
+		}
+		seenServiceTiers[serviceTier] = struct{}{}
+
+		if !entry.Multiplier.GreaterThan(decimal.Zero) {
+			return fmt.Errorf("serviceTierMultipliers[%d].multiplier must be greater than zero", idx)
+		}
+	}
+
 	return nil
 }
 
@@ -338,6 +357,10 @@ type ModelPrice struct {
 
 	// Schedule is the optional time-based price override configuration.
 	Schedule *PriceSchedule `json:"schedule,omitempty"`
+
+	// ServiceTierMultipliers applies a configurable multiplier after the effective
+	// price items are selected. Missing and unknown tiers use a multiplier of 1.
+	ServiceTierMultipliers []ServiceTierMultiplier `json:"serviceTierMultipliers,omitempty"`
 }
 
 func (p *ModelPrice) Equals(other ModelPrice) bool {
@@ -359,7 +382,50 @@ func (p *ModelPrice) Equals(other ModelPrice) bool {
 		return false
 	}
 
+	if len(p.ServiceTierMultipliers) != len(other.ServiceTierMultipliers) {
+		return false
+	}
+
+	for i := range p.ServiceTierMultipliers {
+		if !p.ServiceTierMultipliers[i].Equals(&other.ServiceTierMultipliers[i]) {
+			return false
+		}
+	}
+
 	return true
+}
+
+// ServiceTierMultiplier configures a price multiplier for one requested service tier.
+type ServiceTierMultiplier struct {
+	ServiceTier string          `json:"serviceTier"`
+	Multiplier  decimal.Decimal `json:"multiplier"`
+}
+
+func (m *ServiceTierMultiplier) Equals(other *ServiceTierMultiplier) bool {
+	if m == nil || other == nil {
+		return m == other
+	}
+
+	return strings.EqualFold(strings.TrimSpace(m.ServiceTier), strings.TrimSpace(other.ServiceTier)) &&
+		m.Multiplier.Equal(other.Multiplier)
+}
+
+// FindServiceTierMultiplier returns the configured multiplier or 1 when the
+// request tier is empty or not configured.
+func (p *ModelPrice) FindServiceTierMultiplier(serviceTier string) decimal.Decimal {
+	normalized := strings.TrimSpace(serviceTier)
+	if normalized == "" {
+		return decimal.NewFromInt(1)
+	}
+
+	for i := range p.ServiceTierMultipliers {
+		entry := &p.ServiceTierMultipliers[i]
+		if strings.EqualFold(strings.TrimSpace(entry.ServiceTier), normalized) {
+			return entry.Multiplier
+		}
+	}
+
+	return decimal.NewFromInt(1)
 }
 
 // PriceSchedule defines time-based price override configuration.

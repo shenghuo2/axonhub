@@ -43,6 +43,8 @@ function buildUsageLogsQuery(permissions: { canViewChannels: boolean }) {
             costItems {
               itemCode
               quantity
+              baseSubtotal
+              priceMultiplier
               subtotal
             }
           }
@@ -95,6 +97,8 @@ function buildUsageLogDetailQuery(permissions: { canViewChannels: boolean }) {
           costItems {
             itemCode
             quantity
+            baseSubtotal
+            priceMultiplier
             subtotal
           }
         }

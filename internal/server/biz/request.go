@@ -200,6 +200,13 @@ func (s *RequestService) CreateRequest(
 		mut = mut.SetReasoningEffort(llmRequest.ReasoningEffort)
 	}
 
+	if llmRequest.ServiceTier != nil {
+		serviceTier := strings.ToLower(strings.TrimSpace(*llmRequest.ServiceTier))
+		if serviceTier != "" {
+			mut = mut.SetServiceTier(serviceTier)
+		}
+	}
+
 	// Determine if we should store in database or external storage
 	useExternalStorage := storeRequestBody && s.shouldUseExternalStorage(ctx, dataStorage)
 

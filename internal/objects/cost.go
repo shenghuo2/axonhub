@@ -13,5 +13,7 @@ type CostItem struct {
 	PromptWriteCacheVariantCode PromptWriteCacheVariantCode `json:"promptWriteCacheVariantCode,omitempty"`
 	Quantity                    int64                       `json:"quantity"`
 	TierBreakdown               []TierCost                  `json:"tierBreakdown,omitempty"`
+	BaseSubtotal                *decimal.Decimal            `json:"baseSubtotal,omitempty"`
+	PriceMultiplier             *decimal.Decimal            `json:"priceMultiplier,omitempty"`
 	Subtotal                    decimal.Decimal             `json:"subtotal"`
 }

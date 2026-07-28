@@ -482,6 +482,9 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ReasoningEffortCleared() {
 		_spec.ClearField(request.FieldReasoningEffort, field.TypeString)
 	}
+	if _u.mutation.ServiceTierCleared() {
+		_spec.ClearField(request.FieldServiceTier, field.TypeString)
+	}
 	if value, ok := _u.mutation.RequestHeaders(); ok {
 		_spec.SetField(request.FieldRequestHeaders, field.TypeJSON, value)
 	}
@@ -1193,6 +1196,9 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if _u.mutation.ReasoningEffortCleared() {
 		_spec.ClearField(request.FieldReasoningEffort, field.TypeString)
+	}
+	if _u.mutation.ServiceTierCleared() {
+		_spec.ClearField(request.FieldServiceTier, field.TypeString)
 	}
 	if value, ok := _u.mutation.RequestHeaders(); ok {
 		_spec.SetField(request.FieldRequestHeaders, field.TypeJSON, value)

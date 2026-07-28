@@ -22,6 +22,12 @@ enum PromptWriteCacheVariantCode {
 type ModelPrice {
   items: [ModelPriceItem!]!
   schedule: PriceSchedule
+  serviceTierMultipliers: [ServiceTierMultiplier!]!
+}
+
+type ServiceTierMultiplier {
+  serviceTier: String!
+  multiplier: Decimal!
 }
 
 type ModelPriceItem {
@@ -84,6 +90,12 @@ type PromptWriteCacheVariant {
 input ModelPriceInput {
   items: [ModelPriceItemInput!]!
   schedule: PriceScheduleInput
+  serviceTierMultipliers: [ServiceTierMultiplierInput!]
+}
+
+input ServiceTierMultiplierInput {
+  serviceTier: String!
+  multiplier: Decimal!
 }
 
 input ModelPriceItemInput {

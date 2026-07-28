@@ -375,6 +375,26 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
               </div>
               <p className='text-muted-foreground font-mono text-xs'>{request.apiKey?.name || t('requests.columns.unknown')}</p>
             </div>
+
+            <div className='bg-muted/30 flex items-center justify-between gap-2 rounded-lg border px-3 py-2'>
+              <div className='flex items-center gap-2'>
+                <Database className='text-primary h-3.5 w-3.5' />
+                <span className='text-xs font-medium'>{t('requests.columns.serviceTier')}</span>
+              </div>
+              {request.serviceTier ? (
+                <Badge
+                  className={
+                    request.serviceTier === 'fast'
+                      ? 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
+                      : 'border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
+                  }
+                >
+                  {request.serviceTier === 'fast' ? 'Fast' : request.serviceTier}
+                </Badge>
+              ) : (
+                <span className='text-muted-foreground text-xs'>-</span>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -392,6 +412,8 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
           const cacheHitRate = hasReadCache ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0';
           const writeCacheRate = hasWriteCache ? ((writeCachedTokens / promptTokens) * 100).toFixed(1) : '0.0';
           const cost = usage.totalCost ?? 0;
+          const priceMultiplier = usage.costItems?.find((item) => item.priceMultiplier != null)?.priceMultiplier;
+          const baseCost = usage.costItems?.reduce((total, item) => total + (item.baseSubtotal ?? item.subtotal), 0) ?? 0;
 
           const promptCost = usage.costItems?.find((i: any) => i.itemCode === 'prompt_tokens')?.subtotal;
           const completionCost = usage.costItems?.find((i: any) => i.itemCode === 'completion_tokens')?.subtotal;
@@ -477,6 +499,15 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                     <div className='mt-1'>
                       <p className='text-sm font-semibold'>{usage.totalTokens.toLocaleString()}</p>
                       <p className='text-muted-foreground text-xs'>{renderCost(cost)}</p>
+                      {priceMultiplier != null && priceMultiplier !== 1 && baseCost > 0 && (
+                        <p className='text-muted-foreground text-[10px]'>
+                          {t('requests.cost.multiplierBreakdown', {
+                            base: formatCurrency(baseCost),
+                            multiplier: priceMultiplier,
+                            final: formatCurrency(cost),
+                          })}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

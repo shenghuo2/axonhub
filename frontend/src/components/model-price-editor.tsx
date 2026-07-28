@@ -45,6 +45,10 @@ type PriceEditorFormValues = {
           };
         }> | null;
       }>;
+      serviceTierMultipliers?: Array<{
+        serviceTier: string;
+        multiplier: string;
+      }> | null;
     };
   }>;
 };
@@ -91,6 +95,14 @@ export const ModelPriceEditor = memo(function ChannelModelPriceEditor({
     control,
     name: asFieldArrayPath(`prices.${priceIndex}.price.items`),
   });
+  const {
+    fields: serviceTierMultiplierFields,
+    append: appendServiceTierMultiplier,
+    remove: removeServiceTierMultiplier,
+  } = useFieldArray({
+    control,
+    name: asFieldArrayPath(`prices.${priceIndex}.price.serviceTierMultipliers`),
+  });
 
   return (
     <div className='min-w-0 space-y-4'>
@@ -126,6 +138,62 @@ export const ModelPriceEditor = memo(function ChannelModelPriceEditor({
             <IconPlus size={14} />
           </Button>
         </div>
+      </div>
+      <Separator />
+      <div className='space-y-3'>
+        <div className='flex items-center justify-between gap-3'>
+          <div>
+            <Label className='text-sm font-medium'>{t('price.serviceTierMultipliers')}</Label>
+            <p className='text-muted-foreground text-xs'>{t('price.serviceTierMultipliersDescription')}</p>
+          </div>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={() => appendServiceTierMultiplier({ serviceTier: '', multiplier: '1' })}
+          >
+            <IconPlus size={14} />
+            {t('price.addServiceTierMultiplier')}
+          </Button>
+        </div>
+        {serviceTierMultiplierFields.map((field, multiplierIndex) => (
+          <div key={field.id} className='grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2'>
+            <FormField
+              control={control}
+              name={asFieldPath(`prices.${priceIndex}.price.serviceTierMultipliers.${multiplierIndex}.serviceTier`)}
+              render={({ field: formField }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input {...formField} placeholder={t('price.serviceTierPlaceholder')} className='h-8' />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={asFieldPath(`prices.${priceIndex}.price.serviceTierMultipliers.${multiplierIndex}.multiplier`)}
+              render={({ field: formField }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input {...formField} type='number' min='0' step='0.01' placeholder={t('price.multiplier')} className='h-8' />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon-sm'
+              className='text-destructive'
+              onClick={() => removeServiceTierMultiplier(multiplierIndex)}
+              title={t('common.actions.delete')}
+            >
+              <IconTrash size={14} />
+            </Button>
+          </div>
+        ))}
       </div>
     </div>
   );

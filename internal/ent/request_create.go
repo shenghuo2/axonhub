@@ -148,6 +148,20 @@ func (_c *RequestCreate) SetNillableReasoningEffort(v *string) *RequestCreate {
 	return _c
 }
 
+// SetServiceTier sets the "service_tier" field.
+func (_c *RequestCreate) SetServiceTier(v string) *RequestCreate {
+	_c.mutation.SetServiceTier(v)
+	return _c
+}
+
+// SetNillableServiceTier sets the "service_tier" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableServiceTier(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetServiceTier(*v)
+	}
+	return _c
+}
+
 // SetFormat sets the "format" field.
 func (_c *RequestCreate) SetFormat(v string) *RequestCreate {
 	_c.mutation.SetFormat(v)
@@ -572,6 +586,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ReasoningEffort(); ok {
 		_spec.SetField(request.FieldReasoningEffort, field.TypeString, value)
 		_node.ReasoningEffort = value
+	}
+	if value, ok := _c.mutation.ServiceTier(); ok {
+		_spec.SetField(request.FieldServiceTier, field.TypeString, value)
+		_node.ServiceTier = &value
 	}
 	if value, ok := _c.mutation.Format(); ok {
 		_spec.SetField(request.FieldFormat, field.TypeString, value)
@@ -1098,6 +1116,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.ReasoningEffort(); exists {
 			s.SetIgnore(request.FieldReasoningEffort)
+		}
+		if _, exists := u.create.mutation.ServiceTier(); exists {
+			s.SetIgnore(request.FieldServiceTier)
 		}
 		if _, exists := u.create.mutation.Format(); exists {
 			s.SetIgnore(request.FieldFormat)
@@ -1642,6 +1663,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			}
 			if _, exists := b.mutation.ReasoningEffort(); exists {
 				s.SetIgnore(request.FieldReasoningEffort)
+			}
+			if _, exists := b.mutation.ServiceTier(); exists {
+				s.SetIgnore(request.FieldServiceTier)
 			}
 			if _, exists := b.mutation.Format(); exists {
 				s.SetIgnore(request.FieldFormat)

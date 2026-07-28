@@ -933,6 +933,7 @@ func (svc *BackupService) restoreUsageRequests(
 			SetNillableAPIKeyID(nilIfZero(apiKeyID)).
 			SetNillableChannelID(nilIfZero(channelID)).
 			SetNillableReasoningEffort(nilIfEmpty(reqData.ReasoningEffort)).
+			SetNillableServiceTier(reqData.ServiceTier).
 			SetRequestHeaders(reqData.RequestHeaders).
 			SetResponseBody(reqData.ResponseBody).
 			SetResponseChunks(reqData.ResponseChunks).
@@ -1047,6 +1048,7 @@ func usageRequestBackupFingerprint(req *BackupUsageRequest) string {
 		req.ClientIP,
 		req.ExternalID,
 		req.ReasoningEffort,
+		lo.FromPtr(req.ServiceTier),
 		req.ProjectName,
 		req.ChannelName,
 		req.APIKeyKey,
@@ -1079,6 +1081,7 @@ func usageRequestExistingFingerprint(req *ent.Request, includeAPIKey bool) strin
 		req.ClientIP,
 		req.ExternalID,
 		req.ReasoningEffort,
+		lo.FromPtr(req.ServiceTier),
 		projectName,
 		channelName,
 		apiKeyKey,
@@ -1095,6 +1098,7 @@ func usageRequestFingerprint(
 	clientIP string,
 	externalID string,
 	reasoningEffort string,
+	serviceTier string,
 	projectName string,
 	channelName string,
 	apiKeyKey string,
@@ -1109,6 +1113,7 @@ func usageRequestFingerprint(
 		clientIP,
 		externalID,
 		reasoningEffort,
+		serviceTier,
 		projectName,
 		channelName,
 		apiKeyKey,
@@ -1131,6 +1136,7 @@ func sameUsageRequest(existing *ent.Request, backup *BackupUsageRequest, project
 		existing.ClientIP == backup.ClientIP &&
 		existing.ExternalID == backup.ExternalID &&
 		existing.ReasoningEffort == backup.ReasoningEffort &&
+		lo.FromPtr(existing.ServiceTier) == lo.FromPtr(backup.ServiceTier) &&
 		existing.CreatedAt.Equal(backup.CreatedAt)
 }
 

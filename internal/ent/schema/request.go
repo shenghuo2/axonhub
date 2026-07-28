@@ -62,6 +62,11 @@ func (Request) Fields() []ent.Field {
 			Optional().
 			Immutable().
 			Comment("Reasoning effort used for reasoning models"),
+		field.String("service_tier").
+			Optional().
+			Nillable().
+			Immutable().
+			Comment("Requested service tier used to process and price the request"),
 		// The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),
 		// Request headers

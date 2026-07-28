@@ -9,6 +9,8 @@ export type UsageLogSource = z.infer<typeof usageLogSourceSchema>;
 export const costItemSchema = z.object({
   itemCode: z.string(),
   quantity: z.number(),
+  baseSubtotal: z.number().nullable().optional(),
+  priceMultiplier: z.number().nullable().optional(),
   subtotal: z.number(),
 });
 

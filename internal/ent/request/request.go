@@ -36,6 +36,8 @@ const (
 	FieldModelID = "model_id"
 	// FieldReasoningEffort holds the string denoting the reasoning_effort field in the database.
 	FieldReasoningEffort = "reasoning_effort"
+	// FieldServiceTier holds the string denoting the service_tier field in the database.
+	FieldServiceTier = "service_tier"
 	// FieldFormat holds the string denoting the format field in the database.
 	FieldFormat = "format"
 	// FieldRequestHeaders holds the string denoting the request_headers field in the database.
@@ -149,6 +151,7 @@ var Columns = []string{
 	FieldSource,
 	FieldModelID,
 	FieldReasoningEffort,
+	FieldServiceTier,
 	FieldFormat,
 	FieldRequestHeaders,
 	FieldRequestBody,
@@ -310,6 +313,11 @@ func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 // ByReasoningEffort orders the results by the reasoning_effort field.
 func ByReasoningEffort(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldReasoningEffort, opts...).ToFunc()
+}
+
+// ByServiceTier orders the results by the service_tier field.
+func ByServiceTier(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldServiceTier, opts...).ToFunc()
 }
 
 // ByFormat orders the results by the format field.

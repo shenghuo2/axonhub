@@ -437,4 +437,43 @@ func TestModelPrice_Validate(t *testing.T) {
 		assert.Contains(t, err.Error(), "promptWriteCacheVariants[0]")
 		assert.Contains(t, err.Error(), "usagePerUnit is required")
 	})
+
+	t.Run("service tier name is required", func(t *testing.T) {
+		mp := ModelPrice{
+			ServiceTierMultipliers: []ServiceTierMultiplier{
+				{ServiceTier: "  ", Multiplier: decimal.NewFromInt(2)},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "serviceTier is required")
+	})
+
+	t.Run("service tier names are case insensitive", func(t *testing.T) {
+		mp := ModelPrice{
+			ServiceTierMultipliers: []ServiceTierMultiplier{
+				{ServiceTier: "fast", Multiplier: decimal.NewFromInt(2)},
+				{ServiceTier: " FAST ", Multiplier: decimal.NewFromFloat(2.5)},
+			},
+		}
+
+		err := mp.Validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "serviceTier is duplicated")
+	})
+
+	for _, multiplier := range []decimal.Decimal{decimal.Zero, decimal.NewFromInt(-1)} {
+		t.Run("service tier multiplier must be positive "+multiplier.String(), func(t *testing.T) {
+			mp := ModelPrice{
+				ServiceTierMultipliers: []ServiceTierMultiplier{
+					{ServiceTier: "fast", Multiplier: multiplier},
+				},
+			}
+
+			err := mp.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "multiplier must be greater than zero")
+		})
+	}
 }

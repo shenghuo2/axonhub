@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 )
@@ -759,4 +760,68 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 	require.InDelta(t, 0.0000031, *ul.TotalCost, 1e-12)
 	require.Len(t, ul.CostItems, 2)
 	require.Equal(t, int64(70), ul.PromptWriteCachedTokens)
+}
+
+func TestUsageCost_UsesRequestedServiceTier(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("service-tier-cost").
+		SetSupportedModels([]string{"gpt-5.4"}).
+		SetDefaultTestModel("gpt-5.4").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	baseFee := decimal.NewFromInt(1)
+	_, err = client.ChannelModelPrice.Create().
+		SetChannelID(ch.ID).
+		SetModelID("gpt-5.4").
+		SetPrice(objects.ModelPrice{
+			Items: []objects.ModelPriceItem{
+				{
+					ItemCode: objects.PriceItemCodeUsage,
+					Pricing:  objects.Pricing{Mode: objects.PricingModeFlatFee, FlatFee: &baseFee},
+				},
+			},
+			ServiceTierMultipliers: []objects.ServiceTierMultiplier{
+				{ServiceTier: "fast", Multiplier: decimal.RequireFromString("2.5")},
+			},
+		}).
+		SetReferenceID("ref-service-tier").
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	channelService.preloadModelPrices(ctx, built)
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	usageLog, err := usageLogService.CreateUsageLogFromRequest(
+		ctx,
+		&ent.Request{
+			ID:          1,
+			ProjectID:   1,
+			Source:      request.SourceAPI,
+			Format:      "openai/chat_completions",
+			ServiceTier: lo.ToPtr("fast"),
+		},
+		&ent.RequestExecution{ChannelID: ch.ID, ModelID: "gpt-5.4"},
+		&llm.Usage{PromptTokens: 1, TotalTokens: 1},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, usageLog.TotalCost)
+	require.Equal(t, 2.5, *usageLog.TotalCost)
+	require.Equal(t, "ref-service-tier", usageLog.CostPriceReferenceID)
+	require.Len(t, usageLog.CostItems, 1)
+	require.True(t, usageLog.CostItems[0].BaseSubtotal.Equal(decimal.NewFromInt(1)))
+	require.True(t, usageLog.CostItems[0].PriceMultiplier.Equal(decimal.RequireFromString("2.5")))
+	require.True(t, usageLog.CostItems[0].Subtotal.Equal(decimal.RequireFromString("2.5")))
 }

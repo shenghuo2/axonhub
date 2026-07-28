@@ -402,6 +402,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldSource:                     {Type: field.TypeEnum, Column: request.FieldSource},
 			request.FieldModelID:                    {Type: field.TypeString, Column: request.FieldModelID},
 			request.FieldReasoningEffort:            {Type: field.TypeString, Column: request.FieldReasoningEffort},
+			request.FieldServiceTier:                {Type: field.TypeString, Column: request.FieldServiceTier},
 			request.FieldFormat:                     {Type: field.TypeString, Column: request.FieldFormat},
 			request.FieldRequestHeaders:             {Type: field.TypeJSON, Column: request.FieldRequestHeaders},
 			request.FieldRequestBody:                {Type: field.TypeJSON, Column: request.FieldRequestBody},
@@ -3277,6 +3278,11 @@ func (f *RequestFilter) WhereModelID(p entql.StringP) {
 // WhereReasoningEffort applies the entql string predicate on the reasoning_effort field.
 func (f *RequestFilter) WhereReasoningEffort(p entql.StringP) {
 	f.Where(p.Field(request.FieldReasoningEffort))
+}
+
+// WhereServiceTier applies the entql string predicate on the service_tier field.
+func (f *RequestFilter) WhereServiceTier(p entql.StringP) {
+	f.Where(p.Field(request.FieldServiceTier))
 }
 
 // WhereFormat applies the entql string predicate on the format field.

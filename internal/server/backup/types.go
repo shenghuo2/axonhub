@@ -66,6 +66,7 @@ func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 		Source                     request.Source           `json:"source,omitempty"`
 		ModelID                    string                   `json:"model_id,omitempty"`
 		ReasoningEffort            string                   `json:"reasoning_effort,omitempty"`
+		ServiceTier               *string                  `json:"service_tier,omitempty"`
 		Format                     string                   `json:"format,omitempty"`
 		RequestHeaders             objects.JSONRawMessage   `json:"request_headers,omitempty"`
 		RequestBody                objects.JSONRawMessage   `json:"request_body,omitempty"`
@@ -96,6 +97,7 @@ func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 		Source:                     r.Source,
 		ModelID:                    r.ModelID,
 		ReasoningEffort:            r.ReasoningEffort,
+		ServiceTier:               r.ServiceTier,
 		Format:                     r.Format,
 		RequestHeaders:             r.RequestHeaders,
 		RequestBody:                r.RequestBody,

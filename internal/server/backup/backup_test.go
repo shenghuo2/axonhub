@@ -178,6 +178,7 @@ func createBackupTestUsage(t *testing.T, client *ent.Client, ctx context.Context
 		SetChannelID(ch.ID).
 		SetSource(request.SourceAPI).
 		SetModelID("gpt-4").
+		SetServiceTier("fast").
 		SetFormat("openai/chat_completions").
 		SetRequestBody(objects.JSONRawMessage(`{"model":"gpt-4"}`)).
 		SetStatus(request.StatusCompleted).
@@ -391,6 +392,8 @@ func TestBackupService_Backup_WithRequestLogs(t *testing.T) {
 	require.Equal(t, req.ID, backupData.UsageRequests[0].ID)
 	require.Equal(t, "Project1", backupData.UsageRequests[0].ProjectName)
 	require.Equal(t, "Channel 1", backupData.UsageRequests[0].ChannelName)
+	require.NotNil(t, backupData.UsageRequests[0].ServiceTier)
+	require.Equal(t, "fast", *backupData.UsageRequests[0].ServiceTier)
 	require.Empty(t, backupData.UsageRequests[0].APIKeyKey)
 
 	data, err = service.Backup(ctx, BackupOptions{

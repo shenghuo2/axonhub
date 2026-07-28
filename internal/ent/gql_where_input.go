@@ -6495,6 +6495,23 @@ type RequestWhereInput struct {
 	ReasoningEffortEqualFold    *string  `json:"reasoningEffortEqualFold,omitempty"`
 	ReasoningEffortContainsFold *string  `json:"reasoningEffortContainsFold,omitempty"`
 
+	// "service_tier" field predicates.
+	ServiceTier             *string  `json:"serviceTier,omitempty"`
+	ServiceTierNEQ          *string  `json:"serviceTierNEQ,omitempty"`
+	ServiceTierIn           []string `json:"serviceTierIn,omitempty"`
+	ServiceTierNotIn        []string `json:"serviceTierNotIn,omitempty"`
+	ServiceTierGT           *string  `json:"serviceTierGT,omitempty"`
+	ServiceTierGTE          *string  `json:"serviceTierGTE,omitempty"`
+	ServiceTierLT           *string  `json:"serviceTierLT,omitempty"`
+	ServiceTierLTE          *string  `json:"serviceTierLTE,omitempty"`
+	ServiceTierContains     *string  `json:"serviceTierContains,omitempty"`
+	ServiceTierHasPrefix    *string  `json:"serviceTierHasPrefix,omitempty"`
+	ServiceTierHasSuffix    *string  `json:"serviceTierHasSuffix,omitempty"`
+	ServiceTierIsNil        bool     `json:"serviceTierIsNil,omitempty"`
+	ServiceTierNotNil       bool     `json:"serviceTierNotNil,omitempty"`
+	ServiceTierEqualFold    *string  `json:"serviceTierEqualFold,omitempty"`
+	ServiceTierContainsFold *string  `json:"serviceTierContainsFold,omitempty"`
+
 	// "format" field predicates.
 	Format             *string  `json:"format,omitempty"`
 	FormatNEQ          *string  `json:"formatNEQ,omitempty"`
@@ -6974,6 +6991,51 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.ReasoningEffortContainsFold != nil {
 		predicates = append(predicates, request.ReasoningEffortContainsFold(*i.ReasoningEffortContainsFold))
+	}
+	if i.ServiceTier != nil {
+		predicates = append(predicates, request.ServiceTierEQ(*i.ServiceTier))
+	}
+	if i.ServiceTierNEQ != nil {
+		predicates = append(predicates, request.ServiceTierNEQ(*i.ServiceTierNEQ))
+	}
+	if len(i.ServiceTierIn) > 0 {
+		predicates = append(predicates, request.ServiceTierIn(i.ServiceTierIn...))
+	}
+	if len(i.ServiceTierNotIn) > 0 {
+		predicates = append(predicates, request.ServiceTierNotIn(i.ServiceTierNotIn...))
+	}
+	if i.ServiceTierGT != nil {
+		predicates = append(predicates, request.ServiceTierGT(*i.ServiceTierGT))
+	}
+	if i.ServiceTierGTE != nil {
+		predicates = append(predicates, request.ServiceTierGTE(*i.ServiceTierGTE))
+	}
+	if i.ServiceTierLT != nil {
+		predicates = append(predicates, request.ServiceTierLT(*i.ServiceTierLT))
+	}
+	if i.ServiceTierLTE != nil {
+		predicates = append(predicates, request.ServiceTierLTE(*i.ServiceTierLTE))
+	}
+	if i.ServiceTierContains != nil {
+		predicates = append(predicates, request.ServiceTierContains(*i.ServiceTierContains))
+	}
+	if i.ServiceTierHasPrefix != nil {
+		predicates = append(predicates, request.ServiceTierHasPrefix(*i.ServiceTierHasPrefix))
+	}
+	if i.ServiceTierHasSuffix != nil {
+		predicates = append(predicates, request.ServiceTierHasSuffix(*i.ServiceTierHasSuffix))
+	}
+	if i.ServiceTierIsNil {
+		predicates = append(predicates, request.ServiceTierIsNil())
+	}
+	if i.ServiceTierNotNil {
+		predicates = append(predicates, request.ServiceTierNotNil())
+	}
+	if i.ServiceTierEqualFold != nil {
+		predicates = append(predicates, request.ServiceTierEqualFold(*i.ServiceTierEqualFold))
+	}
+	if i.ServiceTierContainsFold != nil {
+		predicates = append(predicates, request.ServiceTierContainsFold(*i.ServiceTierContainsFold))
 	}
 	if i.Format != nil {
 		predicates = append(predicates, request.FormatEQ(*i.Format))

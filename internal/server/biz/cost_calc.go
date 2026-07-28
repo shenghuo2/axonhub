@@ -141,7 +141,7 @@ func getUpToOrZero(v *int64) int64 {
 
 // ComputeUsageCost calculates total cost and cost items breakdown for the given usage and model price.
 // The now parameter is used for time-based schedule matching.
-func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time) ([]objects.CostItem, decimal.Decimal) {
+func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time, serviceTier string) ([]objects.CostItem, decimal.Decimal) {
 	effectiveItems := price.Items
 
 	if price.Schedule != nil {
@@ -150,7 +150,34 @@ func ComputeUsageCost(usage *llm.Usage, price objects.ModelPrice, now time.Time)
 		}
 	}
 
-	return computeUsageCostWithItems(usage, effectiveItems)
+	items, total := computeUsageCostWithItems(usage, effectiveItems)
+	multiplier := price.FindServiceTierMultiplier(serviceTier)
+
+	return applyPriceMultiplier(items, total, multiplier)
+}
+
+func applyPriceMultiplier(
+	items []objects.CostItem,
+	total decimal.Decimal,
+	multiplier decimal.Decimal,
+) ([]objects.CostItem, decimal.Decimal) {
+	if multiplier.Equal(decimal.NewFromInt(1)) {
+		return items, total
+	}
+
+	for itemIdx := range items {
+		baseSubtotal := items[itemIdx].Subtotal
+		appliedMultiplier := multiplier
+		items[itemIdx].BaseSubtotal = &baseSubtotal
+		items[itemIdx].PriceMultiplier = &appliedMultiplier
+		items[itemIdx].Subtotal = baseSubtotal.Mul(multiplier)
+
+		for tierIdx := range items[itemIdx].TierBreakdown {
+			items[itemIdx].TierBreakdown[tierIdx].Subtotal = items[itemIdx].TierBreakdown[tierIdx].Subtotal.Mul(multiplier)
+		}
+	}
+
+	return items, total.Mul(multiplier)
 }
 
 func computeUsageCostWithItems(usage *llm.Usage, priceItems []objects.ModelPriceItem) ([]objects.CostItem, decimal.Decimal) {
