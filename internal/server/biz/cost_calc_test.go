@@ -996,6 +996,13 @@ func TestComputeUsageCost_ServiceTierMultiplier(t *testing.T) {
 	}
 	require.True(t, summed.Equal(total), "cost item subtotals must sum to total cost")
 
+	priorityItems, priorityTotal := ComputeUsageCost(usage, price, time.Now(), " PRIORITY ")
+	require.True(t, priorityTotal.Equal(decimal.RequireFromString("15")))
+	for _, item := range priorityItems {
+		require.NotNil(t, item.PriceMultiplier)
+		require.True(t, item.PriceMultiplier.Equal(decimal.RequireFromString("2")))
+	}
+
 	for _, tier := range []string{"", "unknown"} {
 		fallbackItems, fallbackTotal := ComputeUsageCost(usage, price, time.Now(), tier)
 		require.True(t, fallbackTotal.Equal(decimal.RequireFromString("7.5")))

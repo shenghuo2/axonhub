@@ -411,7 +411,8 @@ func (m *ServiceTierMultiplier) Equals(other *ServiceTierMultiplier) bool {
 }
 
 // FindServiceTierMultiplier returns the configured multiplier or 1 when the
-// request tier is empty or not configured.
+// request tier is empty or not configured. Fast and priority are compatible
+// aliases, while an exact match always takes precedence over the alias.
 func (p *ModelPrice) FindServiceTierMultiplier(serviceTier string) decimal.Decimal {
 	normalized := strings.TrimSpace(serviceTier)
 	if normalized == "" {
@@ -422,6 +423,22 @@ func (p *ModelPrice) FindServiceTierMultiplier(serviceTier string) decimal.Decim
 		entry := &p.ServiceTierMultipliers[i]
 		if strings.EqualFold(strings.TrimSpace(entry.ServiceTier), normalized) {
 			return entry.Multiplier
+		}
+	}
+
+	alias := ""
+	switch strings.ToLower(normalized) {
+	case "fast":
+		alias = "priority"
+	case "priority":
+		alias = "fast"
+	}
+	if alias != "" {
+		for i := range p.ServiceTierMultipliers {
+			entry := &p.ServiceTierMultipliers[i]
+			if strings.EqualFold(strings.TrimSpace(entry.ServiceTier), alias) {
+				return entry.Multiplier
+			}
 		}
 	}
 

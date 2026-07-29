@@ -15,6 +15,7 @@ import { useGeneralSettings } from '@/features/system/data/system';
 import { getTokenFromStorage } from '@/stores/authStore';
 import { useUsageLogs } from '../data/usage-logs';
 import { type Request, useRequest, useRequestExecutions } from '../data';
+import { formatServiceTier, isFastServiceTier } from '../data/service-tier';
 import { ChunksDialog } from './chunks-dialog';
 import { CurlPreviewDialog } from './curl-preview-dialog';
 import { getStatusColor } from './help';
@@ -384,12 +385,12 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
               {request.serviceTier ? (
                 <Badge
                   className={
-                    request.serviceTier === 'fast'
+                    isFastServiceTier(request.serviceTier)
                       ? 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
                       : 'border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
                   }
                 >
-                  {request.serviceTier === 'fast' ? 'Fast' : request.serviceTier}
+                  {formatServiceTier(request.serviceTier)}
                 </Badge>
               ) : (
                 <span className='text-muted-foreground text-xs'>-</span>

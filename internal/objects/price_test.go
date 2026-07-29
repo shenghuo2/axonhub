@@ -217,6 +217,32 @@ func TestModelPrice_Equals(t *testing.T) {
 	}
 }
 
+func TestModelPriceFindServiceTierMultiplierPriorityCompatibility(t *testing.T) {
+	fastOnly := ModelPrice{
+		ServiceTierMultipliers: []ServiceTierMultiplier{
+			{ServiceTier: "fast", Multiplier: decimal.RequireFromString("2.5")},
+		},
+	}
+	require.True(t, fastOnly.FindServiceTierMultiplier(" PRIORITY ").Equal(decimal.RequireFromString("2.5")))
+
+	priorityOnly := ModelPrice{
+		ServiceTierMultipliers: []ServiceTierMultiplier{
+			{ServiceTier: "priority", Multiplier: decimal.RequireFromString("2")},
+		},
+	}
+	require.True(t, priorityOnly.FindServiceTierMultiplier("FAST").Equal(decimal.RequireFromString("2")))
+
+	exactWins := ModelPrice{
+		ServiceTierMultipliers: []ServiceTierMultiplier{
+			{ServiceTier: "fast", Multiplier: decimal.RequireFromString("2")},
+			{ServiceTier: "priority", Multiplier: decimal.RequireFromString("2.5")},
+		},
+	}
+	require.True(t, exactWins.FindServiceTierMultiplier("fast").Equal(decimal.RequireFromString("2")))
+	require.True(t, exactWins.FindServiceTierMultiplier("priority").Equal(decimal.RequireFromString("2.5")))
+	require.True(t, exactWins.FindServiceTierMultiplier("unknown").Equal(decimal.NewFromInt(1)))
+}
+
 func TestModelPrice_EqualsVolume(t *testing.T) {
 	d1 := decimal.NewFromFloat(0.01)
 	d2 := decimal.NewFromFloat(0.02)

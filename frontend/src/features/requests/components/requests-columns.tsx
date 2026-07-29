@@ -18,6 +18,7 @@ import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } fr
 import { usePermissions } from '@/hooks/usePermissions';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
+import { formatServiceTier, isFastServiceTier } from '../data/service-tier';
 import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
 import { getStatusColor } from './help';
 
@@ -205,12 +206,12 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         return (
           <Badge
             className={
-              serviceTier === 'fast'
+              isFastServiceTier(serviceTier)
                 ? 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'
                 : 'border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
             }
           >
-            {serviceTier === 'fast' ? 'Fast' : serviceTier}
+            {formatServiceTier(serviceTier)}
           </Badge>
         );
       },
