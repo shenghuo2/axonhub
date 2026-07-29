@@ -159,6 +159,24 @@ extend type Query {
   scope).
   """
   apiKeyQuotaUsages(apiKeyId: ID, key: String, name: String): [APIKeyProfileQuotaUsage!]!
+
+  """
+  Resolves one API key in the caller's project to safe metadata. Provide
+  exactly one selector. Requires read_usage_stats and never returns the key.
+  """
+  projectAPIKey(id: ID, key: String, name: String): ProjectAPIKey!
+
+  """
+  Lists non-personal API keys in the caller's project using an opaque cursor.
+  Requires read_usage_stats and never returns key secrets.
+  """
+  projectAPIKeys(first: Int = 100, after: String): ProjectAPIKeyConnection!
+
+  """
+  Returns exact token usage grouped by API key, model, and requested service
+  tier for the caller's project. Requires read_usage_stats.
+  """
+  apiKeyTokenUsageStats(input: APIKeyTokenUsageStatsInput!): [APIKeyTokenUsageStats!]!
 }
 
 type APIKeyProfileQuotaUsage {
@@ -177,4 +195,58 @@ type APIKeyQuotaUsage {
 type APIKeyQuotaWindow {
   start: Time
   end: Time
+}
+
+"""
+Safe API key metadata for usage integrations. This type never exposes the
+plaintext key, scopes, profiles, or other credentials.
+"""
+type ProjectAPIKey {
+  id: ID!
+  name: String!
+  type: String!
+  status: String!
+}
+
+type ProjectAPIKeyEdge {
+  cursor: String!
+  node: ProjectAPIKey!
+}
+
+type ProjectAPIKeyPageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+type ProjectAPIKeyConnection {
+  edges: [ProjectAPIKeyEdge!]!
+  pageInfo: ProjectAPIKeyPageInfo!
+}
+
+input APIKeyTokenUsageStatsInput {
+  apiKeyIds: [ID!]!
+  createdAtGTE: Time
+  createdAtLTE: Time
+}
+
+type APIKeyTokenUsageStats {
+  apiKeyId: ID!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  reasoningTokens: Int!
+  modelServiceTierUsages: [ModelServiceTierTokenUsageStats!]!
+}
+
+"""
+Exact token usage for one model and requested service tier. A null
+serviceTier represents requests that did not specify a tier.
+"""
+type ModelServiceTierTokenUsageStats {
+  modelId: String!
+  serviceTier: String
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  reasoningTokens: Int!
 }

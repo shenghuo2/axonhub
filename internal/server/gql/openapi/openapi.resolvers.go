@@ -123,6 +123,21 @@ func (r *queryResolver) APIKeyQuotaUsages(ctx context.Context, apiKeyID *objects
 	return out, nil
 }
 
+// ProjectAPIKey is the resolver for the projectAPIKey field.
+func (r *queryResolver) ProjectAPIKey(ctx context.Context, id *objects.GUID, key *string, name *string) (*ProjectAPIKey, error) {
+	return r.resolveProjectAPIKey(ctx, id, key, name)
+}
+
+// ProjectAPIKeys is the resolver for the projectAPIKeys field.
+func (r *queryResolver) ProjectAPIKeys(ctx context.Context, first *int, after *string) (*ProjectAPIKeyConnection, error) {
+	return r.listProjectAPIKeys(ctx, first, after)
+}
+
+// APIKeyTokenUsageStats is the resolver for the apiKeyTokenUsageStats field.
+func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input APIKeyTokenUsageStatsInput) ([]*APIKeyTokenUsageStats, error) {
+	return r.queryAPIKeyTokenUsageStats(ctx, input)
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 

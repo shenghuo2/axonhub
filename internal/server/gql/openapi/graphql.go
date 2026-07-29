@@ -31,7 +31,7 @@ type Dependencies struct {
 }
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
-	gqlSrv := handler.New(NewSchema(deps.APIKeyService, deps.APIKeyProfileTemplateService, deps.QuotaService))
+	gqlSrv := handler.New(NewSchema(deps.Ent, deps.APIKeyService, deps.APIKeyProfileTemplateService, deps.QuotaService))
 
 	gqlSrv.AddTransport(transport.Options{})
 	// Intentionally NOT registering transport.GET: the apiKeyQuotaUsages query

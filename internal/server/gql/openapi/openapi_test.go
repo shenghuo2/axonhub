@@ -166,6 +166,7 @@ func setupOpenAPI(t *testing.T, serviceAccountScopes []string) (*mutationResolve
 	quotaSvc := biz.NewQuotaService(client, systemSvc)
 
 	resolver := &Resolver{
+		client:                       client,
 		apiKeyService:                apiKeySvc,
 		apiKeyProfileTemplateService: tmplSvc,
 		quotaService:                 quotaSvc,

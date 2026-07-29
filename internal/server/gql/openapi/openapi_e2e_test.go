@@ -37,9 +37,11 @@ import (
 type e2eEnv struct {
 	server     *httptest.Server
 	saKey      string // service_account with read_api_keys
+	saUsageKey string // service_account with read_usage_stats only
 	saNoScope  string // service_account WITHOUT read_api_keys
 	targetID   int    // user key with a quota profile (same project)
 	targetKey  string
+	personalID int
 	foreignID  int // user key in a different project
 	foreignKey string
 }
@@ -114,6 +116,7 @@ func setupE2E(t *testing.T) e2eEnv {
 	}
 
 	sa := mustKey("sa", proj.ID, apikey.TypeServiceAccount, []string{string(scopes.ScopeReadAPIKeys)}, nil)
+	saUsage := mustKey("sa-usage", proj.ID, apikey.TypeServiceAccount, []string{string(scopes.ScopeReadUsageStats)}, nil)
 	saNoScope := mustKey("sa-noscope", proj.ID, apikey.TypeServiceAccount, []string{string(scopes.ScopeWriteAPIKeys)}, nil)
 
 	quotaProfile := &objects.APIKeyProfiles{
@@ -128,21 +131,33 @@ func setupE2E(t *testing.T) e2eEnv {
 		}},
 	}
 	target := mustKey("target", proj.ID, apikey.TypeUser, nil, quotaProfile)
+	personal := mustKey("personal", proj.ID, apikey.TypePersonal, nil, quotaProfile)
 	foreign := mustKey("foreign", otherProj.ID, apikey.TypeUser, nil, quotaProfile)
 
 	// Two usage rows for the target key → requestCount=2, totalTokens=300, totalCost=2.
 	for i := range 2 {
+		modelID := "gpt-5.4"
+		serviceTier := ""
+		if i == 0 {
+			modelID = "gpt-5.6"
+			serviceTier = "FAST"
+		}
 		req := client.Request.Create().
-			SetProjectID(proj.ID).SetAPIKeyID(target.ID).SetModelID("m").
+			SetProjectID(proj.ID).SetAPIKeyID(target.ID).SetModelID(modelID).
 			SetFormat("openai/chat_completions").SetStatus(request.StatusCompleted).
 			SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
-			SetCreatedAt(now.Add(-time.Duration(i+1) * time.Minute)).SaveX(ctx)
+			SetCreatedAt(now.Add(-time.Duration(i+1) * time.Minute))
+		if serviceTier != "" {
+			req = req.SetServiceTier(serviceTier)
+		}
+		requestRow := req.SaveX(ctx)
 
 		client.UsageLog.Create().
-			SetRequestID(req.ID).SetAPIKeyID(target.ID).SetProjectID(proj.ID).
-			SetChannelID(1).SetModelID("m").SetSource(usagelog.SourceAPI).
+			SetRequestID(requestRow.ID).SetAPIKeyID(target.ID).SetProjectID(proj.ID).
+			SetChannelID(1).SetModelID(modelID).SetSource(usagelog.SourceAPI).
 			SetFormat("openai/chat_completions").
 			SetPromptTokens(50).SetCompletionTokens(100).SetTotalTokens(150).
+			SetPromptCachedTokens(10).SetCompletionReasoningTokens(20).
 			SetTotalCost(1.0).
 			SetCreatedAt(now.Add(-time.Duration(i+1) * time.Minute)).SaveX(ctx)
 	}
@@ -179,15 +194,20 @@ func setupE2E(t *testing.T) e2eEnv {
 	t.Cleanup(srv.Close)
 
 	return e2eEnv{
-		server: srv, saKey: sa.Key, saNoScope: saNoScope.Key,
+		server: srv, saKey: sa.Key, saUsageKey: saUsage.Key, saNoScope: saNoScope.Key,
 		targetID: target.ID, targetKey: target.Key,
+		personalID: personal.ID,
 		foreignID: foreign.ID, foreignKey: foreign.Key,
 	}
 }
 
 func gqlPost(t *testing.T, url, bearer string, vars map[string]any) (int, []byte) {
+	return gqlPostQuery(t, url, bearer, quotaQuery, vars)
+}
+
+func gqlPostQuery(t *testing.T, url, bearer, query string, vars map[string]any) (int, []byte) {
 	t.Helper()
-	payload, err := json.Marshal(map[string]any{"query": quotaQuery, "variables": vars})
+	payload, err := json.Marshal(map[string]any{"query": query, "variables": vars})
 	require.NoError(t, err)
 	req, err := http.NewRequest(http.MethodPost, url+"/openapi/v1/graphql", bytes.NewReader(payload))
 	require.NoError(t, err)
@@ -201,6 +221,140 @@ func gqlPost(t *testing.T, url, bearer string, vars map[string]any) (int, []byte
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	return resp.StatusCode, body
+}
+
+func TestE2E_ProjectUsageStats_ServiceAccountScope(t *testing.T) {
+	env := setupE2E(t)
+	targetGUID := fmt.Sprintf("gid://axonhub/APIKey/%d", env.targetID)
+	foreignGUID := fmt.Sprintf("gid://axonhub/APIKey/%d", env.foreignID)
+	personalGUID := fmt.Sprintf("gid://axonhub/APIKey/%d", env.personalID)
+
+	t.Run("safe metadata works without read_api_keys", func(t *testing.T) {
+		query := `query($id: ID!) {
+		  projectAPIKey(id: $id) { id name type status }
+		}`
+		code, body := gqlPostQuery(t, env.server.URL, env.saUsageKey, query, map[string]any{"id": targetGUID})
+		require.Equal(t, http.StatusOK, code)
+
+		var response struct {
+			Data struct {
+				ProjectAPIKey struct {
+					ID     string `json:"id"`
+					Name   string `json:"name"`
+					Type   string `json:"type"`
+					Status string `json:"status"`
+				} `json:"projectAPIKey"`
+			} `json:"data"`
+			Errors []any `json:"errors"`
+		}
+		require.NoError(t, json.Unmarshal(body, &response))
+		require.Empty(t, response.Errors)
+		require.Equal(t, targetGUID, response.Data.ProjectAPIKey.ID)
+		require.Equal(t, "target", response.Data.ProjectAPIKey.Name)
+		require.Equal(t, "user", response.Data.ProjectAPIKey.Type)
+	})
+
+	t.Run("list is paginated and hides personal keys", func(t *testing.T) {
+		query := `query($after: String) {
+		  projectAPIKeys(first: 2, after: $after) {
+		    edges { cursor node { id name type status } }
+		    pageInfo { hasNextPage endCursor }
+		  }
+		}`
+		after := any(nil)
+		names := make([]string, 0)
+		for {
+			code, body := gqlPostQuery(t, env.server.URL, env.saUsageKey, query, map[string]any{"after": after})
+			require.Equal(t, http.StatusOK, code)
+			var response struct {
+				Data struct {
+					ProjectAPIKeys struct {
+						Edges []struct {
+							Cursor string `json:"cursor"`
+							Node   struct {
+								Name string `json:"name"`
+							} `json:"node"`
+						} `json:"edges"`
+						PageInfo struct {
+							HasNextPage bool    `json:"hasNextPage"`
+							EndCursor   *string `json:"endCursor"`
+						} `json:"pageInfo"`
+					} `json:"projectAPIKeys"`
+				} `json:"data"`
+				Errors []any `json:"errors"`
+			}
+			require.NoError(t, json.Unmarshal(body, &response))
+			require.Empty(t, response.Errors)
+			for _, edge := range response.Data.ProjectAPIKeys.Edges {
+				names = append(names, edge.Node.Name)
+			}
+			if !response.Data.ProjectAPIKeys.PageInfo.HasNextPage {
+				break
+			}
+			require.NotNil(t, response.Data.ProjectAPIKeys.PageInfo.EndCursor)
+			after = *response.Data.ProjectAPIKeys.PageInfo.EndCursor
+		}
+		require.Contains(t, names, "target")
+		require.NotContains(t, names, "personal")
+		require.NotContains(t, names, "foreign")
+	})
+
+	t.Run("usage is grouped by model and normalized service tier", func(t *testing.T) {
+		query := `query($input: APIKeyTokenUsageStatsInput!) {
+		  apiKeyTokenUsageStats(input: $input) {
+		    apiKeyId inputTokens outputTokens cachedTokens reasoningTokens
+		    modelServiceTierUsages {
+		      modelId serviceTier inputTokens outputTokens cachedTokens reasoningTokens
+		    }
+		  }
+		}`
+		code, body := gqlPostQuery(t, env.server.URL, env.saUsageKey, query, map[string]any{
+			"input": map[string]any{"apiKeyIds": []string{targetGUID, foreignGUID, personalGUID}},
+		})
+		require.Equal(t, http.StatusOK, code)
+		var response struct {
+			Data struct {
+				Stats []struct {
+					APIKeyID        string `json:"apiKeyId"`
+					InputTokens     int    `json:"inputTokens"`
+					OutputTokens    int    `json:"outputTokens"`
+					CachedTokens    int    `json:"cachedTokens"`
+					ReasoningTokens int    `json:"reasoningTokens"`
+					Details         []struct {
+						ModelID     string  `json:"modelId"`
+						ServiceTier *string `json:"serviceTier"`
+						InputTokens int     `json:"inputTokens"`
+					} `json:"modelServiceTierUsages"`
+				} `json:"apiKeyTokenUsageStats"`
+			} `json:"data"`
+			Errors []any `json:"errors"`
+		}
+		require.NoError(t, json.Unmarshal(body, &response))
+		require.Empty(t, response.Errors)
+		require.Len(t, response.Data.Stats, 1)
+		stats := response.Data.Stats[0]
+		require.Equal(t, targetGUID, stats.APIKeyID)
+		require.Equal(t, 100, stats.InputTokens)
+		require.Equal(t, 200, stats.OutputTokens)
+		require.Equal(t, 20, stats.CachedTokens)
+		require.Equal(t, 40, stats.ReasoningTokens)
+		require.Len(t, stats.Details, 2)
+		require.Equal(t, "gpt-5.4", stats.Details[0].ModelID)
+		require.Nil(t, stats.Details[0].ServiceTier)
+		require.Equal(t, "gpt-5.6", stats.Details[1].ModelID)
+		require.Equal(t, "fast", *stats.Details[1].ServiceTier)
+	})
+
+	t.Run("missing usage scope is denied", func(t *testing.T) {
+		query := `query { projectAPIKeys(first: 1) { edges { node { id } } } }`
+		code, body := gqlPostQuery(t, env.server.URL, env.saNoScope, query, nil)
+		require.Equal(t, http.StatusOK, code)
+		var response struct {
+			Errors []any `json:"errors"`
+		}
+		require.NoError(t, json.Unmarshal(body, &response))
+		require.NotEmpty(t, response.Errors)
+	})
 }
 
 func TestE2E_APIKeyQuotaUsages_FullStack(t *testing.T) {

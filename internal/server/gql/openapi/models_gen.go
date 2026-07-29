@@ -35,6 +35,21 @@ type APIKeyQuotaWindow struct {
 	End   *time.Time `json:"end,omitempty"`
 }
 
+type APIKeyTokenUsageStats struct {
+	APIKeyID               objects.GUID                       `json:"apiKeyId"`
+	InputTokens            int                                `json:"inputTokens"`
+	OutputTokens           int                                `json:"outputTokens"`
+	CachedTokens           int                                `json:"cachedTokens"`
+	ReasoningTokens        int                                `json:"reasoningTokens"`
+	ModelServiceTierUsages []*ModelServiceTierTokenUsageStats `json:"modelServiceTierUsages"`
+}
+
+type APIKeyTokenUsageStatsInput struct {
+	APIKeyIds    []*objects.GUID `json:"apiKeyIds"`
+	CreatedAtGte *time.Time      `json:"createdAtGTE,omitempty"`
+	CreatedAtLte *time.Time      `json:"createdAtLTE,omitempty"`
+}
+
 type LoadAPIKeyProfileTemplateInput struct {
 	// Template to load. Provide exactly one of templateID or templateName;
 	// templateName resolves within the caller's own project.
@@ -46,5 +61,40 @@ type LoadAPIKeyProfileTemplateInput struct {
 	APIKeyName *string       `json:"apiKeyName,omitempty"`
 }
 
+// Exact token usage for one model and requested service tier. A null
+// serviceTier represents requests that did not specify a tier.
+type ModelServiceTierTokenUsageStats struct {
+	ModelID         string  `json:"modelId"`
+	ServiceTier     *string `json:"serviceTier,omitempty"`
+	InputTokens     int     `json:"inputTokens"`
+	OutputTokens    int     `json:"outputTokens"`
+	CachedTokens    int     `json:"cachedTokens"`
+	ReasoningTokens int     `json:"reasoningTokens"`
+}
+
 type Mutation struct {
+}
+
+// Safe API key metadata for usage integrations. This type never exposes the
+// plaintext key, scopes, profiles, or other credentials.
+type ProjectAPIKey struct {
+	ID     objects.GUID `json:"id"`
+	Name   string       `json:"name"`
+	Type   string       `json:"type"`
+	Status string       `json:"status"`
+}
+
+type ProjectAPIKeyConnection struct {
+	Edges    []*ProjectAPIKeyEdge   `json:"edges"`
+	PageInfo *ProjectAPIKeyPageInfo `json:"pageInfo"`
+}
+
+type ProjectAPIKeyEdge struct {
+	Cursor string         `json:"cursor"`
+	Node   *ProjectAPIKey `json:"node"`
+}
+
+type ProjectAPIKeyPageInfo struct {
+	HasNextPage bool    `json:"hasNextPage"`
+	EndCursor   *string `json:"endCursor,omitempty"`
 }

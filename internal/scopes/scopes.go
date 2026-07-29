@@ -47,6 +47,9 @@ const (
 	// ScopeWriteAPIKeys manage the api keys of the project.
 	ScopeWriteAPIKeys ScopeSlug = "write_api_keys"
 
+	// ScopeReadUsageStats reads project-scoped API key usage statistics without exposing key secrets.
+	ScopeReadUsageStats ScopeSlug = "read_usage_stats"
+
 	// ScopeReadRequests read the requests of the project.
 	ScopeReadRequests ScopeSlug = "read_requests"
 	// ScopeWriteRequests manage the requests of the project.
@@ -151,6 +154,11 @@ var scopeConfigs = []Scope{
 	{
 		Slug:        ScopeWriteAPIKeys,
 		Description: "Manage API keys (create, edit, delete)",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeReadUsageStats,
+		Description: "View project API key usage statistics",
 		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
 	},
 	{
