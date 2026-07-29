@@ -1,3 +1,6 @@
+ARG VERSION
+ARG SOURCE_REPOSITORY=https://github.com/looplj/axonhub
+
 FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-builder
 
 WORKDIR /build
@@ -15,6 +18,8 @@ FROM alpine AS frontend-dist
 COPY --from=frontend-builder /build/dist /dist
 
 FROM golang:alpine AS backend-builder
+
+ARG VERSION
 
 WORKDIR /build
 
@@ -35,13 +40,22 @@ ENV GO111MODULE=on \
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
+    VERSION_VALUE="${VERSION:-$(cat internal/build/VERSION 2>/dev/null || echo dev)}" && \
+    BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" && \
     GOTOOLCHAIN=auto go build \
-    -tags=nomsgpack \
-    -ldflags "-s -w -X 'github.com/looplj/axonhub/internal/build.Version=$(cat internal/build/VERSION 2>/dev/null || echo dev)' -X 'github.com/looplj/axonhub/internal/build.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)'" \
-    -o axonhub \
-    ./cmd/axonhub
+      -tags=nomsgpack \
+      -ldflags="-s -w -X github.com/looplj/axonhub/internal/build.Version=${VERSION_VALUE} -X github.com/looplj/axonhub/internal/build.BuildTime=${BUILD_TIME}" \
+      -o axonhub \
+      ./cmd/axonhub
 
 FROM alpine
+
+ARG VERSION
+ARG SOURCE_REPOSITORY
+
+LABEL org.opencontainers.image.title="AxonHub" \
+      org.opencontainers.image.source="${SOURCE_REPOSITORY}" \
+      org.opencontainers.image.version="${VERSION}"
 
 RUN apk add --no-cache ca-certificates tzdata
 
