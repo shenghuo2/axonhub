@@ -50,6 +50,18 @@ type APIKeyTokenUsageStatsInput struct {
 	CreatedAtLte *time.Time      `json:"createdAtLTE,omitempty"`
 }
 
+// Exact usage_logs totals for one API key. Unlike APIKeyTokenUsageStats, this
+// type intentionally has no service-tier breakdown because it never reads the
+// requests table.
+type APIKeyUsageLogAggregate struct {
+	APIKeyID        objects.GUID            `json:"apiKeyId"`
+	InputTokens     int                     `json:"inputTokens"`
+	OutputTokens    int                     `json:"outputTokens"`
+	CachedTokens    int                     `json:"cachedTokens"`
+	ReasoningTokens int                     `json:"reasoningTokens"`
+	ModelUsages     []*ModelTokenUsageStats `json:"modelUsages"`
+}
+
 type LoadAPIKeyProfileTemplateInput struct {
 	// Template to load. Provide exactly one of templateID or templateName;
 	// templateName resolves within the caller's own project.
@@ -70,6 +82,14 @@ type ModelServiceTierTokenUsageStats struct {
 	OutputTokens    int     `json:"outputTokens"`
 	CachedTokens    int     `json:"cachedTokens"`
 	ReasoningTokens int     `json:"reasoningTokens"`
+}
+
+type ModelTokenUsageStats struct {
+	ModelID         string `json:"modelId"`
+	InputTokens     int    `json:"inputTokens"`
+	OutputTokens    int    `json:"outputTokens"`
+	CachedTokens    int    `json:"cachedTokens"`
+	ReasoningTokens int    `json:"reasoningTokens"`
 }
 
 type Mutation struct {

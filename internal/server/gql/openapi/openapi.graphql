@@ -162,13 +162,15 @@ extend type Query {
 
   """
   Resolves one API key in the caller's project to safe metadata. Provide
-  exactly one selector. Requires read_usage_stats and never returns the key.
+  exactly one selector. Requires read_usage_stats or read_usage_aggregates,
+  and never returns the key.
   """
   projectAPIKey(id: ID, key: String, name: String): ProjectAPIKey!
 
   """
   Lists non-personal API keys in the caller's project using an opaque cursor.
-  Requires read_usage_stats and never returns key secrets.
+  Requires read_usage_stats or read_usage_aggregates, and never returns key
+  secrets.
   """
   projectAPIKeys(first: Int = 100, after: String): ProjectAPIKeyConnection!
 
@@ -177,6 +179,14 @@ extend type Query {
   tier for the caller's project. Requires read_usage_stats.
   """
   apiKeyTokenUsageStats(input: APIKeyTokenUsageStatsInput!): [APIKeyTokenUsageStats!]!
+
+  """
+  Returns exact usage_logs aggregates grouped by API key and model. This does
+  not join request records, so it remains complete after request cleanup.
+  It requires read_usage_aggregates and never returns request data, API key
+  secrets, or service tiers.
+  """
+  apiKeyUsageLogAggregates(input: APIKeyTokenUsageStatsInput!): [APIKeyUsageLogAggregate!]!
 }
 
 type APIKeyProfileQuotaUsage {
@@ -236,6 +246,28 @@ type APIKeyTokenUsageStats {
   cachedTokens: Int!
   reasoningTokens: Int!
   modelServiceTierUsages: [ModelServiceTierTokenUsageStats!]!
+}
+
+"""
+Exact usage_logs totals for one API key. Unlike APIKeyTokenUsageStats, this
+type intentionally has no service-tier breakdown because it never reads the
+requests table.
+"""
+type APIKeyUsageLogAggregate {
+  apiKeyId: ID!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  reasoningTokens: Int!
+  modelUsages: [ModelTokenUsageStats!]!
+}
+
+type ModelTokenUsageStats {
+  modelId: String!
+  inputTokens: Int!
+  outputTokens: Int!
+  cachedTokens: Int!
+  reasoningTokens: Int!
 }
 
 """

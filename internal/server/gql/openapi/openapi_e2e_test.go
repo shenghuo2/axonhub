@@ -36,9 +36,10 @@ import (
 // keys used by the e2e cases.
 type e2eEnv struct {
 	server     *httptest.Server
-	saKey      string // service_account with read_api_keys
-	saUsageKey string // service_account with read_usage_stats only
-	saNoScope  string // service_account WITHOUT read_api_keys
+	saKey               string // service_account with read_api_keys
+	saUsageKey          string // service_account with read_usage_stats only
+	saUsageAggregateKey string // service_account with read_usage_aggregates only
+	saNoScope           string // service_account without usage read scopes
 	targetID   int    // user key with a quota profile (same project)
 	targetKey  string
 	personalID int
@@ -117,6 +118,7 @@ func setupE2E(t *testing.T) e2eEnv {
 
 	sa := mustKey("sa", proj.ID, apikey.TypeServiceAccount, []string{string(scopes.ScopeReadAPIKeys)}, nil)
 	saUsage := mustKey("sa-usage", proj.ID, apikey.TypeServiceAccount, []string{string(scopes.ScopeReadUsageStats)}, nil)
+	saUsageAggregate := mustKey("sa-usage-aggregate", proj.ID, apikey.TypeServiceAccount, []string{string(scopes.ScopeReadUsageAggregates)}, nil)
 	saNoScope := mustKey("sa-noscope", proj.ID, apikey.TypeServiceAccount, []string{string(scopes.ScopeWriteAPIKeys)}, nil)
 
 	quotaProfile := &objects.APIKeyProfiles{
@@ -194,7 +196,8 @@ func setupE2E(t *testing.T) e2eEnv {
 	t.Cleanup(srv.Close)
 
 	return e2eEnv{
-		server: srv, saKey: sa.Key, saUsageKey: saUsage.Key, saNoScope: saNoScope.Key,
+		server: srv,
+		saKey: sa.Key, saUsageKey: saUsage.Key, saUsageAggregateKey: saUsageAggregate.Key, saNoScope: saNoScope.Key,
 		targetID: target.ID, targetKey: target.Key,
 		personalID: personal.ID,
 		foreignID: foreign.ID, foreignKey: foreign.Key,
@@ -343,6 +346,90 @@ func TestE2E_ProjectUsageStats_ServiceAccountScope(t *testing.T) {
 		require.Nil(t, stats.Details[0].ServiceTier)
 		require.Equal(t, "gpt-5.6", stats.Details[1].ModelID)
 		require.Equal(t, "fast", *stats.Details[1].ServiceTier)
+	})
+
+	t.Run("usage log aggregate is project-scoped and does not require request access", func(t *testing.T) {
+		query := `query($input: APIKeyTokenUsageStatsInput!) {
+		  projectAPIKeys(first: 10) { edges { node { id name } } }
+		  apiKeyUsageLogAggregates(input: $input) {
+		    apiKeyId inputTokens outputTokens cachedTokens reasoningTokens
+		    modelUsages { modelId inputTokens outputTokens cachedTokens reasoningTokens }
+		  }
+		}`
+		code, body := gqlPostQuery(t, env.server.URL, env.saUsageAggregateKey, query, map[string]any{
+			"input": map[string]any{"apiKeyIds": []string{targetGUID, foreignGUID, personalGUID}},
+		})
+		require.Equal(t, http.StatusOK, code)
+		var response struct {
+			Data struct {
+				ProjectAPIKeys struct {
+					Edges []struct {
+						Node struct {
+							Name string `json:"name"`
+						} `json:"node"`
+					} `json:"edges"`
+				} `json:"projectAPIKeys"`
+				Stats []struct {
+					APIKeyID        string `json:"apiKeyId"`
+					InputTokens     int    `json:"inputTokens"`
+					OutputTokens    int    `json:"outputTokens"`
+					CachedTokens    int    `json:"cachedTokens"`
+					ReasoningTokens int    `json:"reasoningTokens"`
+					Models          []struct {
+						ModelID string `json:"modelId"`
+					} `json:"modelUsages"`
+				} `json:"apiKeyUsageLogAggregates"`
+			} `json:"data"`
+			Errors []any `json:"errors"`
+		}
+		require.NoError(t, json.Unmarshal(body, &response))
+		require.Empty(t, response.Errors)
+		projectKeyNames := make([]string, 0, len(response.Data.ProjectAPIKeys.Edges))
+		for _, edge := range response.Data.ProjectAPIKeys.Edges {
+			projectKeyNames = append(projectKeyNames, edge.Node.Name)
+		}
+		require.Contains(t, projectKeyNames, "target")
+		require.NotContains(t, projectKeyNames, "personal")
+		require.Len(t, response.Data.Stats, 1)
+		stats := response.Data.Stats[0]
+		require.Equal(t, targetGUID, stats.APIKeyID)
+		require.Equal(t, 100, stats.InputTokens)
+		require.Equal(t, 200, stats.OutputTokens)
+		require.Equal(t, 20, stats.CachedTokens)
+		require.Equal(t, 40, stats.ReasoningTokens)
+		require.Len(t, stats.Models, 2)
+		require.Equal(t, "gpt-5.4", stats.Models[0].ModelID)
+		require.Equal(t, "gpt-5.6", stats.Models[1].ModelID)
+	})
+
+	t.Run("usage aggregate scope cannot read service tier stats", func(t *testing.T) {
+		query := `query($input: APIKeyTokenUsageStatsInput!) {
+		  apiKeyTokenUsageStats(input: $input) { apiKeyId }
+		}`
+		code, body := gqlPostQuery(t, env.server.URL, env.saUsageAggregateKey, query, map[string]any{
+			"input": map[string]any{"apiKeyIds": []string{targetGUID}},
+		})
+		require.Equal(t, http.StatusOK, code)
+		var response struct {
+			Errors []any `json:"errors"`
+		}
+		require.NoError(t, json.Unmarshal(body, &response))
+		require.NotEmpty(t, response.Errors)
+	})
+
+	t.Run("service tier scope cannot read usage log aggregates", func(t *testing.T) {
+		query := `query($input: APIKeyTokenUsageStatsInput!) {
+		  apiKeyUsageLogAggregates(input: $input) { apiKeyId }
+		}`
+		code, body := gqlPostQuery(t, env.server.URL, env.saUsageKey, query, map[string]any{
+			"input": map[string]any{"apiKeyIds": []string{targetGUID}},
+		})
+		require.Equal(t, http.StatusOK, code)
+		var response struct {
+			Errors []any `json:"errors"`
+		}
+		require.NoError(t, json.Unmarshal(body, &response))
+		require.NotEmpty(t, response.Errors)
 	})
 
 	t.Run("missing usage scope is denied", func(t *testing.T) {

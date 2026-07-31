@@ -49,6 +49,9 @@ const (
 
 	// ScopeReadUsageStats reads project-scoped API key usage statistics without exposing key secrets.
 	ScopeReadUsageStats ScopeSlug = "read_usage_stats"
+	// ScopeReadUsageAggregates reads project-scoped usage-log aggregates without
+	// exposing request records or API key secrets.
+	ScopeReadUsageAggregates ScopeSlug = "read_usage_aggregates"
 
 	// ScopeReadRequests read the requests of the project.
 	ScopeReadRequests ScopeSlug = "read_requests"
@@ -159,6 +162,11 @@ var scopeConfigs = []Scope{
 	{
 		Slug:        ScopeReadUsageStats,
 		Description: "View project API key usage statistics",
+		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
+	},
+	{
+		Slug:        ScopeReadUsageAggregates,
+		Description: "View project usage log aggregates",
 		Levels:      []ScopeLevel{ScopeLevelSystem, ScopeLevelProject},
 	},
 	{

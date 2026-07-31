@@ -37,13 +37,23 @@ type usageStatsRow struct {
 	ReasoningTokens int64   `json:"reasoning_tokens"`
 }
 
+type usageLogAggregateRow struct {
+	APIKeyID        int   `json:"api_key_id"`
+	ModelID         string `json:"model_id"`
+	InputTokens     int64  `json:"input_tokens"`
+	OutputTokens    int64  `json:"output_tokens"`
+	CachedTokens    int64  `json:"cached_tokens"`
+	ReasoningTokens int64  `json:"reasoning_tokens"`
+}
+
 func (r *Resolver) resolveProjectAPIKey(
 	ctx context.Context,
 	id *objects.GUID,
 	key *string,
 	name *string,
 ) (*ProjectAPIKey, error) {
-	if err := authz.RequireScope(ctx, scopes.ScopeReadUsageStats); err != nil {
+	metadataScope, err := usageMetadataScope(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -73,7 +83,7 @@ func (r *Resolver) resolveProjectAPIKey(
 		query = query.Where(apikey.NameEQ(strings.TrimSpace(*name)))
 	}
 
-	item, err := query.Only(authz.WithScopeDecision(ctx, scopes.ScopeReadUsageStats))
+	item, err := query.Only(authz.WithScopeDecision(ctx, metadataScope))
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, fmt.Errorf("API key not found in service account project")
@@ -89,7 +99,8 @@ func (r *Resolver) listProjectAPIKeys(
 	first *int,
 	after *string,
 ) (*ProjectAPIKeyConnection, error) {
-	if err := authz.RequireScope(ctx, scopes.ScopeReadUsageStats); err != nil {
+	metadataScope, err := usageMetadataScope(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -121,7 +132,7 @@ func (r *Resolver) listProjectAPIKeys(
 	items, err := query.
 		Order(ent.Asc(apikey.FieldID)).
 		Limit(pageSize + 1).
-		All(authz.WithScopeDecision(ctx, scopes.ScopeReadUsageStats))
+		All(authz.WithScopeDecision(ctx, metadataScope))
 	if err != nil {
 		return nil, fmt.Errorf("list project API keys: %w", err)
 	}
@@ -157,49 +168,17 @@ func (r *Resolver) queryAPIKeyTokenUsageStats(
 	ctx context.Context,
 	input APIKeyTokenUsageStatsInput,
 ) ([]*APIKeyTokenUsageStats, error) {
-	if err := authz.RequireScope(ctx, scopes.ScopeReadUsageStats); err != nil {
+	accessibleIDs, statsCtx, err := r.accessibleUsageAPIKeyIDs(ctx, input, scopes.ScopeReadUsageStats)
+	if err != nil {
 		return nil, err
 	}
-	if len(input.APIKeyIds) == 0 {
-		return nil, fmt.Errorf("apiKeyIds is required and must contain at least one API key")
-	}
-	if len(input.APIKeyIds) > maxUsageStatsAPIKeys {
-		return nil, fmt.Errorf("apiKeyIds cannot exceed %d items", maxUsageStatsAPIKeys)
-	}
-	if input.CreatedAtGte != nil && input.CreatedAtLte != nil && input.CreatedAtGte.After(*input.CreatedAtLte) {
-		return nil, fmt.Errorf("createdAtGTE must not be after createdAtLTE")
-	}
-
-	requestedIDs := make([]int, 0, len(input.APIKeyIds))
-	seen := make(map[int]struct{}, len(input.APIKeyIds))
-	for _, guid := range input.APIKeyIds {
-		if guid == nil || guid.Type != ent.TypeAPIKey {
-			return nil, fmt.Errorf("apiKeyIds must contain only APIKey IDs")
-		}
-		if _, exists := seen[guid.ID]; exists {
-			continue
-		}
-		seen[guid.ID] = struct{}{}
-		requestedIDs = append(requestedIDs, guid.ID)
+	if len(accessibleIDs) == 0 {
+		return []*APIKeyTokenUsageStats{}, nil
 	}
 
 	principal, ok := contexts.GetAPIKey(ctx)
 	if !ok || principal == nil {
 		return nil, fmt.Errorf("api key not found in context")
-	}
-	statsCtx := authz.WithScopeDecision(ctx, scopes.ScopeReadUsageStats)
-	accessibleIDs, err := r.client.APIKey.Query().
-		Where(
-			apikey.IDIn(requestedIDs...),
-			apikey.ProjectIDEQ(principal.ProjectID),
-			apikey.TypeNEQ(apikey.TypePersonal),
-		).
-		IDs(statsCtx)
-	if err != nil {
-		return nil, fmt.Errorf("validate project API key access: %w", err)
-	}
-	if len(accessibleIDs) == 0 {
-		return []*APIKeyTokenUsageStats{}, nil
 	}
 
 	query := r.client.UsageLog.Query().Where(
@@ -239,6 +218,116 @@ func (r *Resolver) queryAPIKeyTokenUsageStats(
 	}
 
 	return buildTokenUsageStats(accessibleIDs, rows), nil
+}
+
+func (r *Resolver) queryAPIKeyUsageLogAggregates(
+	ctx context.Context,
+	input APIKeyTokenUsageStatsInput,
+) ([]*APIKeyUsageLogAggregate, error) {
+	accessibleIDs, statsCtx, err := r.accessibleUsageAPIKeyIDs(ctx, input, scopes.ScopeReadUsageAggregates)
+	if err != nil {
+		return nil, err
+	}
+	if len(accessibleIDs) == 0 {
+		return []*APIKeyUsageLogAggregate{}, nil
+	}
+
+	principal, ok := contexts.GetAPIKey(ctx)
+	if !ok || principal == nil {
+		return nil, fmt.Errorf("api key not found in context")
+	}
+
+	query := r.client.UsageLog.Query().Where(
+		usagelog.ProjectIDEQ(principal.ProjectID),
+		usagelog.APIKeyIDIn(accessibleIDs...),
+	)
+	if input.CreatedAtGte != nil {
+		query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGte))
+	}
+	if input.CreatedAtLte != nil {
+		query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLte))
+	}
+
+	var rows []usageLogAggregateRow
+	err = query.Modify(func(s *sql.Selector) {
+		s.Select(
+			s.C(usagelog.FieldAPIKeyID),
+			s.C(usagelog.FieldModelID),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+		).GroupBy(
+			s.C(usagelog.FieldAPIKeyID),
+			s.C(usagelog.FieldModelID),
+		)
+	}).Scan(statsCtx, &rows)
+	if err != nil {
+		return nil, fmt.Errorf("query API key usage log aggregates: %w", err)
+	}
+
+	return buildUsageLogAggregates(accessibleIDs, rows), nil
+}
+
+func (r *Resolver) accessibleUsageAPIKeyIDs(
+	ctx context.Context,
+	input APIKeyTokenUsageStatsInput,
+	requiredScope scopes.ScopeSlug,
+) ([]int, context.Context, error) {
+	if err := authz.RequireScope(ctx, requiredScope); err != nil {
+		return nil, nil, err
+	}
+	if len(input.APIKeyIds) == 0 {
+		return nil, nil, fmt.Errorf("apiKeyIds is required and must contain at least one API key")
+	}
+	if len(input.APIKeyIds) > maxUsageStatsAPIKeys {
+		return nil, nil, fmt.Errorf("apiKeyIds cannot exceed %d items", maxUsageStatsAPIKeys)
+	}
+	if input.CreatedAtGte != nil && input.CreatedAtLte != nil && input.CreatedAtGte.After(*input.CreatedAtLte) {
+		return nil, nil, fmt.Errorf("createdAtGTE must not be after createdAtLTE")
+	}
+
+	requestedIDs := make([]int, 0, len(input.APIKeyIds))
+	seen := make(map[int]struct{}, len(input.APIKeyIds))
+	for _, guid := range input.APIKeyIds {
+		if guid == nil || guid.Type != ent.TypeAPIKey {
+			return nil, nil, fmt.Errorf("apiKeyIds must contain only APIKey IDs")
+		}
+		if _, exists := seen[guid.ID]; exists {
+			continue
+		}
+		seen[guid.ID] = struct{}{}
+		requestedIDs = append(requestedIDs, guid.ID)
+	}
+
+	principal, ok := contexts.GetAPIKey(ctx)
+	if !ok || principal == nil {
+		return nil, nil, fmt.Errorf("api key not found in context")
+	}
+	statsCtx := authz.WithScopeDecision(ctx, requiredScope)
+	accessibleIDs, err := r.client.APIKey.Query().
+		Where(
+			apikey.IDIn(requestedIDs...),
+			apikey.ProjectIDEQ(principal.ProjectID),
+			apikey.TypeNEQ(apikey.TypePersonal),
+		).
+		IDs(statsCtx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("validate project API key access: %w", err)
+	}
+
+	return accessibleIDs, statsCtx, nil
+}
+
+func usageMetadataScope(ctx context.Context) (scopes.ScopeSlug, error) {
+	if authz.HasScope(ctx, scopes.ScopeReadUsageStats) {
+		return scopes.ScopeReadUsageStats, nil
+	}
+	if authz.HasScope(ctx, scopes.ScopeReadUsageAggregates) {
+		return scopes.ScopeReadUsageAggregates, nil
+	}
+
+	return "", fmt.Errorf("authz: principal does not have a project usage read scope")
 }
 
 func buildTokenUsageStats(accessibleIDs []int, rows []usageStatsRow) []*APIKeyTokenUsageStats {
@@ -320,6 +409,77 @@ func buildTokenUsageStats(accessibleIDs []int, rows []usageStatsRow) []*APIKeyTo
 			ModelServiceTierUsages: details,
 		})
 	}
+	return result
+}
+
+func buildUsageLogAggregates(accessibleIDs []int, rows []usageLogAggregateRow) []*APIKeyUsageLogAggregate {
+	type modelAccumulator struct {
+		modelID         string
+		inputTokens     int64
+		outputTokens    int64
+		cachedTokens    int64
+		reasoningTokens int64
+	}
+	type keyAccumulator struct {
+		inputTokens     int64
+		outputTokens    int64
+		cachedTokens    int64
+		reasoningTokens int64
+		models          map[string]*modelAccumulator
+	}
+
+	byKey := make(map[int]*keyAccumulator, len(accessibleIDs))
+	for _, id := range accessibleIDs {
+		byKey[id] = &keyAccumulator{models: make(map[string]*modelAccumulator)}
+	}
+	for _, row := range rows {
+		keyStats, ok := byKey[row.APIKeyID]
+		if !ok {
+			continue
+		}
+		model, exists := keyStats.models[row.ModelID]
+		if !exists {
+			model = &modelAccumulator{modelID: row.ModelID}
+			keyStats.models[row.ModelID] = model
+		}
+		model.inputTokens += row.InputTokens
+		model.outputTokens += row.OutputTokens
+		model.cachedTokens += row.CachedTokens
+		model.reasoningTokens += row.ReasoningTokens
+		keyStats.inputTokens += row.InputTokens
+		keyStats.outputTokens += row.OutputTokens
+		keyStats.cachedTokens += row.CachedTokens
+		keyStats.reasoningTokens += row.ReasoningTokens
+	}
+
+	sort.Ints(accessibleIDs)
+	result := make([]*APIKeyUsageLogAggregate, 0, len(accessibleIDs))
+	for _, id := range accessibleIDs {
+		item := byKey[id]
+		models := make([]*ModelTokenUsageStats, 0, len(item.models))
+		for _, model := range item.models {
+			models = append(models, &ModelTokenUsageStats{
+				ModelID:         model.modelID,
+				InputTokens:     usageInt(model.inputTokens),
+				OutputTokens:    usageInt(model.outputTokens),
+				CachedTokens:    usageInt(model.cachedTokens),
+				ReasoningTokens: usageInt(model.reasoningTokens),
+			})
+		}
+		sort.Slice(models, func(i, j int) bool {
+			return models[i].ModelID < models[j].ModelID
+		})
+
+		result = append(result, &APIKeyUsageLogAggregate{
+			APIKeyID:        objects.GUID{Type: ent.TypeAPIKey, ID: id},
+			InputTokens:     usageInt(item.inputTokens),
+			OutputTokens:    usageInt(item.outputTokens),
+			CachedTokens:    usageInt(item.cachedTokens),
+			ReasoningTokens: usageInt(item.reasoningTokens),
+			ModelUsages:     models,
+		})
+	}
+
 	return result
 }
 

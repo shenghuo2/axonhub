@@ -122,6 +122,15 @@ type ComplexityRoot struct {
 		ReasoningTokens        func(childComplexity int) int
 	}
 
+	APIKeyUsageLogAggregate struct {
+		APIKeyID        func(childComplexity int) int
+		CachedTokens    func(childComplexity int) int
+		InputTokens     func(childComplexity int) int
+		ModelUsages     func(childComplexity int) int
+		OutputTokens    func(childComplexity int) int
+		ReasoningTokens func(childComplexity int) int
+	}
+
 	ModelMapping struct {
 		From func(childComplexity int) int
 		To   func(childComplexity int) int
@@ -134,6 +143,14 @@ type ComplexityRoot struct {
 		OutputTokens    func(childComplexity int) int
 		ReasoningTokens func(childComplexity int) int
 		ServiceTier     func(childComplexity int) int
+	}
+
+	ModelTokenUsageStats struct {
+		CachedTokens    func(childComplexity int) int
+		InputTokens     func(childComplexity int) int
+		ModelID         func(childComplexity int) int
+		OutputTokens    func(childComplexity int) int
+		ReasoningTokens func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -165,11 +182,12 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		APIKey                func(childComplexity int, id *objects.GUID, key *string, name *string) int
-		APIKeyQuotaUsages     func(childComplexity int, apiKeyID *objects.GUID, key *string, name *string) int
-		APIKeyTokenUsageStats func(childComplexity int, input APIKeyTokenUsageStatsInput) int
-		ProjectAPIKey         func(childComplexity int, id *objects.GUID, key *string, name *string) int
-		ProjectAPIKeys        func(childComplexity int, first *int, after *string) int
+		APIKey                   func(childComplexity int, id *objects.GUID, key *string, name *string) int
+		APIKeyQuotaUsages        func(childComplexity int, apiKeyID *objects.GUID, key *string, name *string) int
+		APIKeyTokenUsageStats    func(childComplexity int, input APIKeyTokenUsageStatsInput) int
+		APIKeyUsageLogAggregates func(childComplexity int, input APIKeyTokenUsageStatsInput) int
+		ProjectAPIKey            func(childComplexity int, id *objects.GUID, key *string, name *string) int
+		ProjectAPIKeys           func(childComplexity int, first *int, after *string) int
 	}
 }
 
@@ -184,6 +202,7 @@ type QueryResolver interface {
 	ProjectAPIKey(ctx context.Context, id *objects.GUID, key *string, name *string) (*ProjectAPIKey, error)
 	ProjectAPIKeys(ctx context.Context, first *int, after *string) (*ProjectAPIKeyConnection, error)
 	APIKeyTokenUsageStats(ctx context.Context, input APIKeyTokenUsageStatsInput) ([]*APIKeyTokenUsageStats, error)
+	APIKeyUsageLogAggregates(ctx context.Context, input APIKeyTokenUsageStatsInput) ([]*APIKeyUsageLogAggregate, error)
 }
 
 type executableSchema struct {
@@ -456,6 +475,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKeyTokenUsageStats.ReasoningTokens(childComplexity), true
 
+	case "APIKeyUsageLogAggregate.apiKeyId":
+		if e.complexity.APIKeyUsageLogAggregate.APIKeyID == nil {
+			break
+		}
+
+		return e.complexity.APIKeyUsageLogAggregate.APIKeyID(childComplexity), true
+	case "APIKeyUsageLogAggregate.cachedTokens":
+		if e.complexity.APIKeyUsageLogAggregate.CachedTokens == nil {
+			break
+		}
+
+		return e.complexity.APIKeyUsageLogAggregate.CachedTokens(childComplexity), true
+	case "APIKeyUsageLogAggregate.inputTokens":
+		if e.complexity.APIKeyUsageLogAggregate.InputTokens == nil {
+			break
+		}
+
+		return e.complexity.APIKeyUsageLogAggregate.InputTokens(childComplexity), true
+	case "APIKeyUsageLogAggregate.modelUsages":
+		if e.complexity.APIKeyUsageLogAggregate.ModelUsages == nil {
+			break
+		}
+
+		return e.complexity.APIKeyUsageLogAggregate.ModelUsages(childComplexity), true
+	case "APIKeyUsageLogAggregate.outputTokens":
+		if e.complexity.APIKeyUsageLogAggregate.OutputTokens == nil {
+			break
+		}
+
+		return e.complexity.APIKeyUsageLogAggregate.OutputTokens(childComplexity), true
+	case "APIKeyUsageLogAggregate.reasoningTokens":
+		if e.complexity.APIKeyUsageLogAggregate.ReasoningTokens == nil {
+			break
+		}
+
+		return e.complexity.APIKeyUsageLogAggregate.ReasoningTokens(childComplexity), true
+
 	case "ModelMapping.from":
 		if e.complexity.ModelMapping.From == nil {
 			break
@@ -505,6 +561,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelServiceTierTokenUsageStats.ServiceTier(childComplexity), true
+
+	case "ModelTokenUsageStats.cachedTokens":
+		if e.complexity.ModelTokenUsageStats.CachedTokens == nil {
+			break
+		}
+
+		return e.complexity.ModelTokenUsageStats.CachedTokens(childComplexity), true
+	case "ModelTokenUsageStats.inputTokens":
+		if e.complexity.ModelTokenUsageStats.InputTokens == nil {
+			break
+		}
+
+		return e.complexity.ModelTokenUsageStats.InputTokens(childComplexity), true
+	case "ModelTokenUsageStats.modelId":
+		if e.complexity.ModelTokenUsageStats.ModelID == nil {
+			break
+		}
+
+		return e.complexity.ModelTokenUsageStats.ModelID(childComplexity), true
+	case "ModelTokenUsageStats.outputTokens":
+		if e.complexity.ModelTokenUsageStats.OutputTokens == nil {
+			break
+		}
+
+		return e.complexity.ModelTokenUsageStats.OutputTokens(childComplexity), true
+	case "ModelTokenUsageStats.reasoningTokens":
+		if e.complexity.ModelTokenUsageStats.ReasoningTokens == nil {
+			break
+		}
+
+		return e.complexity.ModelTokenUsageStats.ReasoningTokens(childComplexity), true
 
 	case "Mutation.createLLMAPIKey":
 		if e.complexity.Mutation.CreateLLMAPIKey == nil {
@@ -637,6 +724,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.APIKeyTokenUsageStats(childComplexity, args["input"].(APIKeyTokenUsageStatsInput)), true
+	case "Query.apiKeyUsageLogAggregates":
+		if e.complexity.Query.APIKeyUsageLogAggregates == nil {
+			break
+		}
+
+		args, err := ec.field_Query_apiKeyUsageLogAggregates_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.APIKeyUsageLogAggregates(childComplexity, args["input"].(APIKeyTokenUsageStatsInput)), true
 	case "Query.projectAPIKey":
 		if e.complexity.Query.ProjectAPIKey == nil {
 			break
@@ -869,6 +967,17 @@ func (ec *executionContext) field_Query_apiKeyQuotaUsages_args(ctx context.Conte
 }
 
 func (ec *executionContext) field_Query_apiKeyTokenUsageStats_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAPIKeyTokenUsageStatsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐAPIKeyTokenUsageStatsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_apiKeyUsageLogAggregates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAPIKeyTokenUsageStatsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐAPIKeyTokenUsageStatsInput)
@@ -2245,6 +2354,192 @@ func (ec *executionContext) fieldContext_APIKeyTokenUsageStats_modelServiceTierU
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKeyUsageLogAggregate_apiKeyId(ctx context.Context, field graphql.CollectedField, obj *APIKeyUsageLogAggregate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyUsageLogAggregate_apiKeyId,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyUsageLogAggregate_apiKeyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyUsageLogAggregate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyUsageLogAggregate_inputTokens(ctx context.Context, field graphql.CollectedField, obj *APIKeyUsageLogAggregate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyUsageLogAggregate_inputTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.InputTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyUsageLogAggregate_inputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyUsageLogAggregate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyUsageLogAggregate_outputTokens(ctx context.Context, field graphql.CollectedField, obj *APIKeyUsageLogAggregate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyUsageLogAggregate_outputTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.OutputTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyUsageLogAggregate_outputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyUsageLogAggregate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyUsageLogAggregate_cachedTokens(ctx context.Context, field graphql.CollectedField, obj *APIKeyUsageLogAggregate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyUsageLogAggregate_cachedTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.CachedTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyUsageLogAggregate_cachedTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyUsageLogAggregate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyUsageLogAggregate_reasoningTokens(ctx context.Context, field graphql.CollectedField, obj *APIKeyUsageLogAggregate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyUsageLogAggregate_reasoningTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.ReasoningTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyUsageLogAggregate_reasoningTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyUsageLogAggregate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyUsageLogAggregate_modelUsages(ctx context.Context, field graphql.CollectedField, obj *APIKeyUsageLogAggregate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyUsageLogAggregate_modelUsages,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelUsages, nil
+		},
+		nil,
+		ec.marshalNModelTokenUsageStats2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐModelTokenUsageStatsᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyUsageLogAggregate_modelUsages(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyUsageLogAggregate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "modelId":
+				return ec.fieldContext_ModelTokenUsageStats_modelId(ctx, field)
+			case "inputTokens":
+				return ec.fieldContext_ModelTokenUsageStats_inputTokens(ctx, field)
+			case "outputTokens":
+				return ec.fieldContext_ModelTokenUsageStats_outputTokens(ctx, field)
+			case "cachedTokens":
+				return ec.fieldContext_ModelTokenUsageStats_cachedTokens(ctx, field)
+			case "reasoningTokens":
+				return ec.fieldContext_ModelTokenUsageStats_reasoningTokens(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelTokenUsageStats", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelMapping_from(ctx context.Context, field graphql.CollectedField, obj *objects.ModelMapping) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2467,6 +2762,151 @@ func (ec *executionContext) _ModelServiceTierTokenUsageStats_reasoningTokens(ctx
 func (ec *executionContext) fieldContext_ModelServiceTierTokenUsageStats_reasoningTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ModelServiceTierTokenUsageStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelTokenUsageStats_modelId(ctx context.Context, field graphql.CollectedField, obj *ModelTokenUsageStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelTokenUsageStats_modelId,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelTokenUsageStats_modelId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelTokenUsageStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelTokenUsageStats_inputTokens(ctx context.Context, field graphql.CollectedField, obj *ModelTokenUsageStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelTokenUsageStats_inputTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.InputTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelTokenUsageStats_inputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelTokenUsageStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelTokenUsageStats_outputTokens(ctx context.Context, field graphql.CollectedField, obj *ModelTokenUsageStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelTokenUsageStats_outputTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.OutputTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelTokenUsageStats_outputTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelTokenUsageStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelTokenUsageStats_cachedTokens(ctx context.Context, field graphql.CollectedField, obj *ModelTokenUsageStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelTokenUsageStats_cachedTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.CachedTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelTokenUsageStats_cachedTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelTokenUsageStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelTokenUsageStats_reasoningTokens(ctx context.Context, field graphql.CollectedField, obj *ModelTokenUsageStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelTokenUsageStats_reasoningTokens,
+		func(ctx context.Context) (any, error) {
+			return obj.ReasoningTokens, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelTokenUsageStats_reasoningTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelTokenUsageStats",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -3199,6 +3639,61 @@ func (ec *executionContext) fieldContext_Query_apiKeyTokenUsageStats(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_apiKeyTokenUsageStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_apiKeyUsageLogAggregates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_apiKeyUsageLogAggregates,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().APIKeyUsageLogAggregates(ctx, fc.Args["input"].(APIKeyTokenUsageStatsInput))
+		},
+		nil,
+		ec.marshalNAPIKeyUsageLogAggregate2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐAPIKeyUsageLogAggregateᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_apiKeyUsageLogAggregates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "apiKeyId":
+				return ec.fieldContext_APIKeyUsageLogAggregate_apiKeyId(ctx, field)
+			case "inputTokens":
+				return ec.fieldContext_APIKeyUsageLogAggregate_inputTokens(ctx, field)
+			case "outputTokens":
+				return ec.fieldContext_APIKeyUsageLogAggregate_outputTokens(ctx, field)
+			case "cachedTokens":
+				return ec.fieldContext_APIKeyUsageLogAggregate_cachedTokens(ctx, field)
+			case "reasoningTokens":
+				return ec.fieldContext_APIKeyUsageLogAggregate_reasoningTokens(ctx, field)
+			case "modelUsages":
+				return ec.fieldContext_APIKeyUsageLogAggregate_modelUsages(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type APIKeyUsageLogAggregate", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_apiKeyUsageLogAggregates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -5673,6 +6168,70 @@ func (ec *executionContext) _APIKeyTokenUsageStats(ctx context.Context, sel ast.
 	return out
 }
 
+var aPIKeyUsageLogAggregateImplementors = []string{"APIKeyUsageLogAggregate"}
+
+func (ec *executionContext) _APIKeyUsageLogAggregate(ctx context.Context, sel ast.SelectionSet, obj *APIKeyUsageLogAggregate) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aPIKeyUsageLogAggregateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("APIKeyUsageLogAggregate")
+		case "apiKeyId":
+			out.Values[i] = ec._APIKeyUsageLogAggregate_apiKeyId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "inputTokens":
+			out.Values[i] = ec._APIKeyUsageLogAggregate_inputTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "outputTokens":
+			out.Values[i] = ec._APIKeyUsageLogAggregate_outputTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cachedTokens":
+			out.Values[i] = ec._APIKeyUsageLogAggregate_cachedTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasoningTokens":
+			out.Values[i] = ec._APIKeyUsageLogAggregate_reasoningTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "modelUsages":
+			out.Values[i] = ec._APIKeyUsageLogAggregate_modelUsages(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var modelMappingImplementors = []string{"ModelMapping"}
 
 func (ec *executionContext) _ModelMapping(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelMapping) graphql.Marshaler {
@@ -5752,6 +6311,65 @@ func (ec *executionContext) _ModelServiceTierTokenUsageStats(ctx context.Context
 			}
 		case "reasoningTokens":
 			out.Values[i] = ec._ModelServiceTierTokenUsageStats_reasoningTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelTokenUsageStatsImplementors = []string{"ModelTokenUsageStats"}
+
+func (ec *executionContext) _ModelTokenUsageStats(ctx context.Context, sel ast.SelectionSet, obj *ModelTokenUsageStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelTokenUsageStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelTokenUsageStats")
+		case "modelId":
+			out.Values[i] = ec._ModelTokenUsageStats_modelId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "inputTokens":
+			out.Values[i] = ec._ModelTokenUsageStats_inputTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "outputTokens":
+			out.Values[i] = ec._ModelTokenUsageStats_outputTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cachedTokens":
+			out.Values[i] = ec._ModelTokenUsageStats_cachedTokens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reasoningTokens":
+			out.Values[i] = ec._ModelTokenUsageStats_reasoningTokens(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -6141,6 +6759,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_apiKeyTokenUsageStats(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "apiKeyUsageLogAggregates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_apiKeyUsageLogAggregates(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -6760,6 +7400,60 @@ func (ec *executionContext) unmarshalNAPIKeyTokenUsageStatsInput2githubᚗcomᚋ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNAPIKeyUsageLogAggregate2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐAPIKeyUsageLogAggregateᚄ(ctx context.Context, sel ast.SelectionSet, v []*APIKeyUsageLogAggregate) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAPIKeyUsageLogAggregate2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐAPIKeyUsageLogAggregate(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAPIKeyUsageLogAggregate2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐAPIKeyUsageLogAggregate(ctx context.Context, sel ast.SelectionSet, v *APIKeyUsageLogAggregate) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._APIKeyUsageLogAggregate(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -6946,6 +7640,60 @@ func (ec *executionContext) marshalNModelServiceTierTokenUsageStats2ᚖgithubᚗ
 		return graphql.Null
 	}
 	return ec._ModelServiceTierTokenUsageStats(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNModelTokenUsageStats2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐModelTokenUsageStatsᚄ(ctx context.Context, sel ast.SelectionSet, v []*ModelTokenUsageStats) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelTokenUsageStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐModelTokenUsageStats(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNModelTokenUsageStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐModelTokenUsageStats(ctx context.Context, sel ast.SelectionSet, v *ModelTokenUsageStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ModelTokenUsageStats(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNProjectAPIKey2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚋopenapiᚐProjectAPIKey(ctx context.Context, sel ast.SelectionSet, v ProjectAPIKey) graphql.Marshaler {

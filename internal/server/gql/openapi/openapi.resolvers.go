@@ -138,6 +138,11 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input APIKeyT
 	return r.queryAPIKeyTokenUsageStats(ctx, input)
 }
 
+// APIKeyUsageLogAggregates is the resolver for the apiKeyUsageLogAggregates field.
+func (r *queryResolver) APIKeyUsageLogAggregates(ctx context.Context, input APIKeyTokenUsageStatsInput) ([]*APIKeyUsageLogAggregate, error) {
+	return r.queryAPIKeyUsageLogAggregates(ctx, input)
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
