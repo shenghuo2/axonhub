@@ -18,6 +18,11 @@ var (
 	DoneResponse = &Response{
 		Object: "[DONE]",
 	}
+
+	// ErrStreamIncomplete means a streaming response ended without a protocol
+	// terminal event. Pipelines may retry it only before meaningful output is
+	// committed to the caller.
+	ErrStreamIncomplete = errors.New("stream ended without terminal event")
 )
 
 // Request is the unified llm request model for AxonHub, to keep compatibility with major app and framework.
@@ -554,6 +559,9 @@ type MessageContentPart struct {
 type ImageURL struct {
 	// URL is the URL of the image.
 	URL string `json:"url"`
+
+	// MIMEType is the MIME type of the image when provided by the source protocol.
+	MIMEType string `json:"mime_type,omitempty"`
 
 	// Specifies the detail level of the image. Learn more in the
 	// [Vision guide](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).

@@ -203,7 +203,7 @@ func init() {
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
 	// channelDescEndpoints is the schema descriptor for endpoints field.
-	channelDescEndpoints := channelFields[17].Descriptor()
+	channelDescEndpoints := channelFields[18].Descriptor()
 	// channel.DefaultEndpoints holds the default value on creation for the endpoints field.
 	channel.DefaultEndpoints = channelDescEndpoints.Default.([]objects.ChannelEndpoint)
 	channelmodelpriceMixin := schema.ChannelModelPrice{}.Mixin()
@@ -395,11 +395,11 @@ func init() {
 	// invitation.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	invitation.DefaultDeletedAt = invitationDescDeletedAt.Default.(int)
 	// invitationDescMaxUses is the schema descriptor for max_uses field.
-	invitationDescMaxUses := invitationFields[3].Descriptor()
+	invitationDescMaxUses := invitationFields[4].Descriptor()
 	// invitation.DefaultMaxUses holds the default value on creation for the max_uses field.
 	invitation.DefaultMaxUses = invitationDescMaxUses.Default.(int)
 	// invitationDescUsedCount is the schema descriptor for used_count field.
-	invitationDescUsedCount := invitationFields[4].Descriptor()
+	invitationDescUsedCount := invitationFields[5].Descriptor()
 	// invitation.DefaultUsedCount holds the default value on creation for the used_count field.
 	invitation.DefaultUsedCount = invitationDescUsedCount.Default.(int)
 	modelMixin := schema.Model{}.Mixin()
@@ -702,11 +702,11 @@ func init() {
 	// requestexecution.DefaultFormat holds the default value on creation for the format field.
 	requestexecution.DefaultFormat = requestexecutionDescFormat.Default.(string)
 	// requestexecutionDescStream is the schema descriptor for stream field.
-	requestexecutionDescStream := requestexecutionFields[13].Descriptor()
+	requestexecutionDescStream := requestexecutionFields[14].Descriptor()
 	// requestexecution.DefaultStream holds the default value on creation for the stream field.
 	requestexecution.DefaultStream = requestexecutionDescStream.Default.(bool)
 	// requestexecutionDescPassThroughApplied is the schema descriptor for pass_through_applied field.
-	requestexecutionDescPassThroughApplied := requestexecutionFields[19].Descriptor()
+	requestexecutionDescPassThroughApplied := requestexecutionFields[20].Descriptor()
 	// requestexecution.DefaultPassThroughApplied holds the default value on creation for the pass_through_applied field.
 	requestexecution.DefaultPassThroughApplied = requestexecutionDescPassThroughApplied.Default.(bool)
 	roleMixin := schema.Role{}.Mixin()

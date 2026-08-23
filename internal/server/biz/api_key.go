@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"reflect"
 	"strings"
 	"time"
 
@@ -321,6 +322,11 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 
 		apiKeyType = *input.Type
 	}
+	if apiKeyType == apikey.TypeUser {
+		if err := s.requireProjectAdmin(ctx, user.ID, input.ProjectID); err != nil {
+			return nil, err
+		}
+	}
 
 	// Generate API key with configured prefix
 	generatedKey, err := GenerateAPIKey(s.keyPrefix)
@@ -398,6 +404,29 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 	}
 
 	return apiKey, nil
+}
+
+func (s *APIKeyService) requireProjectAdmin(ctx context.Context, userID, projectID int) error {
+	currentUser, err := authz.RunWithSystemBypass(ctx, "api-key-project-permission", func(bypassCtx context.Context) (*ent.User, error) {
+		return s.entFromContext(bypassCtx).User.Query().
+			Where(user.IDEQ(userID)).
+			WithRoles().
+			WithProjectUsers().
+			Only(bypassCtx)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to load API key creator permissions: %w", err)
+	}
+
+	projectCtx := contexts.WithUser(ctx, currentUser)
+	if err := NewPermissionValidator().CanGrantScopes(projectCtx, []string{
+		string(scopes.ScopeWriteUsers),
+		string(scopes.ScopeWriteRoles),
+	}, &projectID); err != nil {
+		return fmt.Errorf("permission denied: project API keys require project admin permissions")
+	}
+
+	return nil
 }
 
 // UpdateAPIKey updates an existing API key.
@@ -581,11 +610,20 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 	if err := validateProfileFilters(profiles.Profiles); err != nil {
 		return nil, err
 	}
+	if err := validateProfileRoutingPolicies(profiles.Profiles); err != nil {
+		return nil, err
+	}
 
 	// Validate quota configuration (if present)
 	if err := validateProfileQuota(profiles.Profiles); err != nil {
 		return nil, err
 	}
+
+	// A profile remains linked only while a direct API key edit leaves its
+	// template-managed contents untouched. This lets callers change the active
+	// profile without breaking links, while any one-off profile customization
+	// automatically detaches only that profile from future template publishes.
+	detachModifiedTemplateProfiles(existing.Profiles, &profiles)
 
 	apiKey, err := client.APIKey.UpdateOneID(id).
 		SetProfiles(&profiles).
@@ -598,6 +636,83 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 	s.invalidateAPIKeyCaches(ctx, apiKey.Key)
 
 	return apiKey, nil
+}
+
+func detachModifiedTemplateProfiles(existing, next *objects.APIKeyProfiles) {
+	if next == nil {
+		return
+	}
+
+	for i := range next.Profiles {
+		profile := &next.Profiles[i]
+		if profile.TemplateID == nil {
+			profile.TemplateName = ""
+			continue
+		}
+
+		linkedProfile := findLinkedProfile(existing, *profile.TemplateID, profile.Name)
+		if linkedProfile == nil || !sameProfileIgnoringTemplate(linkedProfile, profile) {
+			profile.TemplateID = nil
+			profile.TemplateName = ""
+		} else {
+			profile.TemplateName = linkedProfile.TemplateName
+		}
+	}
+}
+
+func findLinkedProfile(profiles *objects.APIKeyProfiles, templateID int, name string) *objects.APIKeyProfile {
+	if profiles == nil {
+		return nil
+	}
+
+	for i := range profiles.Profiles {
+		profile := &profiles.Profiles[i]
+		if profile.TemplateID != nil && *profile.TemplateID == templateID && profile.Name == name {
+			return profile
+		}
+	}
+
+	return nil
+}
+
+func sameProfileIgnoringTemplate(a, b *objects.APIKeyProfile) bool {
+	left := normalizeProfileForComparison(a)
+	right := normalizeProfileForComparison(b)
+	left.TemplateID = nil
+	right.TemplateID = nil
+	left.TemplateName = ""
+	right.TemplateName = ""
+
+	return reflect.DeepEqual(left, right)
+}
+
+func normalizeProfileForComparison(profile *objects.APIKeyProfile) *objects.APIKeyProfile {
+	result := profile.Clone()
+	if result.ModelMappings == nil {
+		result.ModelMappings = []objects.ModelMapping{}
+	}
+	if result.ChannelIDs == nil {
+		result.ChannelIDs = []int{}
+	}
+	if result.ChannelTags == nil {
+		result.ChannelTags = []string{}
+	}
+	if result.ModelIDs == nil {
+		result.ModelIDs = []string{}
+	}
+	result.ChannelTagsMatchMode = result.ChannelTagsMatchMode.OrDefault()
+	loadBalanceStrategy := objects.RoutingPolicyDefault
+	if result.LoadBalanceStrategy != nil {
+		loadBalanceStrategy = objects.NormalizeRoutingPolicyValue(*result.LoadBalanceStrategy)
+	}
+	result.LoadBalanceStrategy = &loadBalanceStrategy
+	traceStickyMode := objects.RoutingPolicyDefault
+	if result.TraceStickyMode != nil {
+		traceStickyMode = objects.NormalizeRoutingPolicyValue(*result.TraceStickyMode)
+	}
+	result.TraceStickyMode = &traceStickyMode
+
+	return result
 }
 
 // validateProfileNames checks that all profile names are unique (case-insensitive).
@@ -636,6 +751,44 @@ func validateProfileFilters(profiles []objects.APIKeyProfile) error {
 		if !profile.ChannelTagsMatchMode.IsValid() {
 			return fmt.Errorf("profile '%s' channelTagsMatchMode is invalid", profile.Name)
 		}
+	}
+
+	return nil
+}
+
+func validateProfileRoutingPolicies(profiles []objects.APIKeyProfile) error {
+	for i := range profiles {
+		if err := normalizeAndValidateProfileRoutingPolicy(&profiles[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizeAndValidateProfileRoutingPolicy(profile *objects.APIKeyProfile) error {
+	if profile == nil {
+		return nil
+	}
+
+	if profile.LoadBalanceStrategy == nil {
+		profile.LoadBalanceStrategy = lo.ToPtr(objects.RoutingPolicyDefault)
+	} else {
+		normalized := objects.NormalizeRoutingPolicyValue(*profile.LoadBalanceStrategy)
+		profile.LoadBalanceStrategy = &normalized
+	}
+	if !objects.IsValidLoadBalancerStrategy(*profile.LoadBalanceStrategy) {
+		return fmt.Errorf("profile '%s' loadBalanceStrategy is invalid", profile.Name)
+	}
+
+	if profile.TraceStickyMode == nil {
+		profile.TraceStickyMode = lo.ToPtr(objects.RoutingPolicyDefault)
+	} else {
+		normalized := objects.NormalizeRoutingPolicyValue(*profile.TraceStickyMode)
+		profile.TraceStickyMode = &normalized
+	}
+	if !objects.IsValidTraceStickyMode(*profile.TraceStickyMode) {
+		return fmt.Errorf("profile '%s' traceStickyMode is invalid", profile.Name)
 	}
 
 	return nil

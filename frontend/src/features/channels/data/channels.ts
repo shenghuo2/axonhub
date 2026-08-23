@@ -77,6 +77,7 @@ const CREATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
       autoSyncSupportedModels
@@ -151,6 +152,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
       autoSyncSupportedModels
@@ -225,6 +227,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       status
       policies {
         stream
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
       autoSyncSupportedModels
@@ -299,6 +302,7 @@ const UPDATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
       }
       supportedModels
       autoSyncSupportedModels
@@ -582,6 +586,7 @@ const GET_CHANNEL_DISABLED_API_KEYS_QUERY = `
           disabledAt
           errorCode
           reason
+          expiresAt
         }
       }
     }
@@ -841,6 +846,7 @@ const QUERY_CHANNELS_QUERY = `
           status
           policies {
             stream
+            apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
           }
           credentials {
             apiKey
@@ -949,6 +955,7 @@ const QUERY_CHANNELS_QUERY = `
             disabledAt
             errorCode
             reason
+            expiresAt
           }
           liveLimiterStats {
             inFlight
@@ -1824,6 +1831,7 @@ export function useChannelDisabledAPIKeys(channelId: string, options?: { enabled
               disabledAt: string;
               errorCode: number;
               reason?: string | null;
+              expiresAt?: string | null;
             }>;
           };
         }>(GET_CHANNEL_DISABLED_API_KEYS_QUERY, { id: channelId });

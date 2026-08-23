@@ -2123,6 +2123,7 @@ type ChannelMutation struct {
 	ordering_weight              *int
 	addordering_weight           *int
 	error_message                *string
+	auto_disabled_at             *time.Time
 	remark                       *string
 	endpoints                    *[]objects.ChannelEndpoint
 	appendendpoints              []objects.ChannelEndpoint
@@ -3138,6 +3139,55 @@ func (m *ChannelMutation) ResetErrorMessage() {
 	delete(m.clearedFields, channel.FieldErrorMessage)
 }
 
+// SetAutoDisabledAt sets the "auto_disabled_at" field.
+func (m *ChannelMutation) SetAutoDisabledAt(t time.Time) {
+	m.auto_disabled_at = &t
+}
+
+// AutoDisabledAt returns the value of the "auto_disabled_at" field in the mutation.
+func (m *ChannelMutation) AutoDisabledAt() (r time.Time, exists bool) {
+	v := m.auto_disabled_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAutoDisabledAt returns the old "auto_disabled_at" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldAutoDisabledAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAutoDisabledAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAutoDisabledAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAutoDisabledAt: %w", err)
+	}
+	return oldValue.AutoDisabledAt, nil
+}
+
+// ClearAutoDisabledAt clears the value of the "auto_disabled_at" field.
+func (m *ChannelMutation) ClearAutoDisabledAt() {
+	m.auto_disabled_at = nil
+	m.clearedFields[channel.FieldAutoDisabledAt] = struct{}{}
+}
+
+// AutoDisabledAtCleared returns if the "auto_disabled_at" field was cleared in this mutation.
+func (m *ChannelMutation) AutoDisabledAtCleared() bool {
+	_, ok := m.clearedFields[channel.FieldAutoDisabledAt]
+	return ok
+}
+
+// ResetAutoDisabledAt resets all changes to the "auto_disabled_at" field.
+func (m *ChannelMutation) ResetAutoDisabledAt() {
+	m.auto_disabled_at = nil
+	delete(m.clearedFields, channel.FieldAutoDisabledAt)
+}
+
 // SetRemark sets the "remark" field.
 func (m *ChannelMutation) SetRemark(s string) {
 	m.remark = &s
@@ -3595,7 +3645,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 21)
+	fields := make([]string, 0, 22)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -3653,6 +3703,9 @@ func (m *ChannelMutation) Fields() []string {
 	if m.error_message != nil {
 		fields = append(fields, channel.FieldErrorMessage)
 	}
+	if m.auto_disabled_at != nil {
+		fields = append(fields, channel.FieldAutoDisabledAt)
+	}
 	if m.remark != nil {
 		fields = append(fields, channel.FieldRemark)
 	}
@@ -3705,6 +3758,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.OrderingWeight()
 	case channel.FieldErrorMessage:
 		return m.ErrorMessage()
+	case channel.FieldAutoDisabledAt:
+		return m.AutoDisabledAt()
 	case channel.FieldRemark:
 		return m.Remark()
 	case channel.FieldEndpoints:
@@ -3756,6 +3811,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldOrderingWeight(ctx)
 	case channel.FieldErrorMessage:
 		return m.OldErrorMessage(ctx)
+	case channel.FieldAutoDisabledAt:
+		return m.OldAutoDisabledAt(ctx)
 	case channel.FieldRemark:
 		return m.OldRemark(ctx)
 	case channel.FieldEndpoints:
@@ -3902,6 +3959,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetErrorMessage(v)
 		return nil
+	case channel.FieldAutoDisabledAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAutoDisabledAt(v)
+		return nil
 	case channel.FieldRemark:
 		v, ok := value.(string)
 		if !ok {
@@ -3997,6 +4061,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldErrorMessage) {
 		fields = append(fields, channel.FieldErrorMessage)
 	}
+	if m.FieldCleared(channel.FieldAutoDisabledAt) {
+		fields = append(fields, channel.FieldAutoDisabledAt)
+	}
 	if m.FieldCleared(channel.FieldRemark) {
 		fields = append(fields, channel.FieldRemark)
 	}
@@ -4040,6 +4107,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 		return nil
 	case channel.FieldErrorMessage:
 		m.ClearErrorMessage()
+		return nil
+	case channel.FieldAutoDisabledAt:
+		m.ClearAutoDisabledAt()
 		return nil
 	case channel.FieldRemark:
 		m.ClearRemark()
@@ -4111,6 +4181,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldErrorMessage:
 		m.ResetErrorMessage()
+		return nil
+	case channel.FieldAutoDisabledAt:
+		m.ResetAutoDisabledAt()
 		return nil
 	case channel.FieldRemark:
 		m.ResetRemark()
@@ -8950,6 +9023,8 @@ type InvitationMutation struct {
 	deleted_at     *int
 	adddeleted_at  *int
 	token_hash     *string
+	role_id        *int
+	addrole_id     *int
 	expires_at     *time.Time
 	max_uses       *int
 	addmax_uses    *int
@@ -9261,6 +9336,76 @@ func (m *InvitationMutation) ResetProjectID() {
 	m.project = nil
 }
 
+// SetRoleID sets the "role_id" field.
+func (m *InvitationMutation) SetRoleID(i int) {
+	m.role_id = &i
+	m.addrole_id = nil
+}
+
+// RoleID returns the value of the "role_id" field in the mutation.
+func (m *InvitationMutation) RoleID() (r int, exists bool) {
+	v := m.role_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRoleID returns the old "role_id" field's value of the Invitation entity.
+// If the Invitation object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvitationMutation) OldRoleID(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRoleID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRoleID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRoleID: %w", err)
+	}
+	return oldValue.RoleID, nil
+}
+
+// AddRoleID adds i to the "role_id" field.
+func (m *InvitationMutation) AddRoleID(i int) {
+	if m.addrole_id != nil {
+		*m.addrole_id += i
+	} else {
+		m.addrole_id = &i
+	}
+}
+
+// AddedRoleID returns the value that was added to the "role_id" field in this mutation.
+func (m *InvitationMutation) AddedRoleID() (r int, exists bool) {
+	v := m.addrole_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearRoleID clears the value of the "role_id" field.
+func (m *InvitationMutation) ClearRoleID() {
+	m.role_id = nil
+	m.addrole_id = nil
+	m.clearedFields[invitation.FieldRoleID] = struct{}{}
+}
+
+// RoleIDCleared returns if the "role_id" field was cleared in this mutation.
+func (m *InvitationMutation) RoleIDCleared() bool {
+	_, ok := m.clearedFields[invitation.FieldRoleID]
+	return ok
+}
+
+// ResetRoleID resets all changes to the "role_id" field.
+func (m *InvitationMutation) ResetRoleID() {
+	m.role_id = nil
+	m.addrole_id = nil
+	delete(m.clearedFields, invitation.FieldRoleID)
+}
+
 // SetExpiresAt sets the "expires_at" field.
 func (m *InvitationMutation) SetExpiresAt(t time.Time) {
 	m.expires_at = &t
@@ -9483,7 +9628,7 @@ func (m *InvitationMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InvitationMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.created_at != nil {
 		fields = append(fields, invitation.FieldCreatedAt)
 	}
@@ -9498,6 +9643,9 @@ func (m *InvitationMutation) Fields() []string {
 	}
 	if m.project != nil {
 		fields = append(fields, invitation.FieldProjectID)
+	}
+	if m.role_id != nil {
+		fields = append(fields, invitation.FieldRoleID)
 	}
 	if m.expires_at != nil {
 		fields = append(fields, invitation.FieldExpiresAt)
@@ -9526,6 +9674,8 @@ func (m *InvitationMutation) Field(name string) (ent.Value, bool) {
 		return m.TokenHash()
 	case invitation.FieldProjectID:
 		return m.ProjectID()
+	case invitation.FieldRoleID:
+		return m.RoleID()
 	case invitation.FieldExpiresAt:
 		return m.ExpiresAt()
 	case invitation.FieldMaxUses:
@@ -9551,6 +9701,8 @@ func (m *InvitationMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldTokenHash(ctx)
 	case invitation.FieldProjectID:
 		return m.OldProjectID(ctx)
+	case invitation.FieldRoleID:
+		return m.OldRoleID(ctx)
 	case invitation.FieldExpiresAt:
 		return m.OldExpiresAt(ctx)
 	case invitation.FieldMaxUses:
@@ -9601,6 +9753,13 @@ func (m *InvitationMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetProjectID(v)
 		return nil
+	case invitation.FieldRoleID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRoleID(v)
+		return nil
 	case invitation.FieldExpiresAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -9633,6 +9792,9 @@ func (m *InvitationMutation) AddedFields() []string {
 	if m.adddeleted_at != nil {
 		fields = append(fields, invitation.FieldDeletedAt)
 	}
+	if m.addrole_id != nil {
+		fields = append(fields, invitation.FieldRoleID)
+	}
 	if m.addmax_uses != nil {
 		fields = append(fields, invitation.FieldMaxUses)
 	}
@@ -9649,6 +9811,8 @@ func (m *InvitationMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case invitation.FieldDeletedAt:
 		return m.AddedDeletedAt()
+	case invitation.FieldRoleID:
+		return m.AddedRoleID()
 	case invitation.FieldMaxUses:
 		return m.AddedMaxUses()
 	case invitation.FieldUsedCount:
@@ -9668,6 +9832,13 @@ func (m *InvitationMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddDeletedAt(v)
+		return nil
+	case invitation.FieldRoleID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRoleID(v)
 		return nil
 	case invitation.FieldMaxUses:
 		v, ok := value.(int)
@@ -9691,6 +9862,9 @@ func (m *InvitationMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *InvitationMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(invitation.FieldRoleID) {
+		fields = append(fields, invitation.FieldRoleID)
+	}
 	if m.FieldCleared(invitation.FieldExpiresAt) {
 		fields = append(fields, invitation.FieldExpiresAt)
 	}
@@ -9708,6 +9882,9 @@ func (m *InvitationMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *InvitationMutation) ClearField(name string) error {
 	switch name {
+	case invitation.FieldRoleID:
+		m.ClearRoleID()
+		return nil
 	case invitation.FieldExpiresAt:
 		m.ClearExpiresAt()
 		return nil
@@ -9733,6 +9910,9 @@ func (m *InvitationMutation) ResetField(name string) error {
 		return nil
 	case invitation.FieldProjectID:
 		m.ResetProjectID()
+		return nil
+	case invitation.FieldRoleID:
+		m.ResetRoleID()
 		return nil
 	case invitation.FieldExpiresAt:
 		m.ResetExpiresAt()
@@ -18707,6 +18887,7 @@ type RequestExecutionMutation struct {
 	external_id                       *string
 	model_id                          *string
 	format                            *string
+	reasoning_effort                  *string
 	request_body                      *objects.JSONRawMessage
 	appendrequest_body                objects.JSONRawMessage
 	response_body                     *objects.JSONRawMessage
@@ -19219,6 +19400,55 @@ func (m *RequestExecutionMutation) OldFormat(ctx context.Context) (v string, err
 // ResetFormat resets all changes to the "format" field.
 func (m *RequestExecutionMutation) ResetFormat() {
 	m.format = nil
+}
+
+// SetReasoningEffort sets the "reasoning_effort" field.
+func (m *RequestExecutionMutation) SetReasoningEffort(s string) {
+	m.reasoning_effort = &s
+}
+
+// ReasoningEffort returns the value of the "reasoning_effort" field in the mutation.
+func (m *RequestExecutionMutation) ReasoningEffort() (r string, exists bool) {
+	v := m.reasoning_effort
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReasoningEffort returns the old "reasoning_effort" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldReasoningEffort(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReasoningEffort is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReasoningEffort requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReasoningEffort: %w", err)
+	}
+	return oldValue.ReasoningEffort, nil
+}
+
+// ClearReasoningEffort clears the value of the "reasoning_effort" field.
+func (m *RequestExecutionMutation) ClearReasoningEffort() {
+	m.reasoning_effort = nil
+	m.clearedFields[requestexecution.FieldReasoningEffort] = struct{}{}
+}
+
+// ReasoningEffortCleared returns if the "reasoning_effort" field was cleared in this mutation.
+func (m *RequestExecutionMutation) ReasoningEffortCleared() bool {
+	_, ok := m.clearedFields[requestexecution.FieldReasoningEffort]
+	return ok
+}
+
+// ResetReasoningEffort resets all changes to the "reasoning_effort" field.
+func (m *RequestExecutionMutation) ResetReasoningEffort() {
+	m.reasoning_effort = nil
+	delete(m.clearedFields, requestexecution.FieldReasoningEffort)
 }
 
 // SetRequestBody sets the "request_body" field.
@@ -20068,7 +20298,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 22)
+	fields := make([]string, 0, 23)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -20095,6 +20325,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.format != nil {
 		fields = append(fields, requestexecution.FieldFormat)
+	}
+	if m.reasoning_effort != nil {
+		fields = append(fields, requestexecution.FieldReasoningEffort)
 	}
 	if m.request_body != nil {
 		fields = append(fields, requestexecution.FieldRequestBody)
@@ -20161,6 +20394,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ModelID()
 	case requestexecution.FieldFormat:
 		return m.Format()
+	case requestexecution.FieldReasoningEffort:
+		return m.ReasoningEffort()
 	case requestexecution.FieldRequestBody:
 		return m.RequestBody()
 	case requestexecution.FieldResponseBody:
@@ -20214,6 +20449,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldModelID(ctx)
 	case requestexecution.FieldFormat:
 		return m.OldFormat(ctx)
+	case requestexecution.FieldReasoningEffort:
+		return m.OldReasoningEffort(ctx)
 	case requestexecution.FieldRequestBody:
 		return m.OldRequestBody(ctx)
 	case requestexecution.FieldResponseBody:
@@ -20311,6 +20548,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFormat(v)
+		return nil
+	case requestexecution.FieldReasoningEffort:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReasoningEffort(v)
 		return nil
 	case requestexecution.FieldRequestBody:
 		v, ok := value.(objects.JSONRawMessage)
@@ -20505,6 +20749,9 @@ func (m *RequestExecutionMutation) ClearedFields() []string {
 	if m.FieldCleared(requestexecution.FieldExternalID) {
 		fields = append(fields, requestexecution.FieldExternalID)
 	}
+	if m.FieldCleared(requestexecution.FieldReasoningEffort) {
+		fields = append(fields, requestexecution.FieldReasoningEffort)
+	}
 	if m.FieldCleared(requestexecution.FieldResponseBody) {
 		fields = append(fields, requestexecution.FieldResponseBody)
 	}
@@ -20554,6 +20801,9 @@ func (m *RequestExecutionMutation) ClearField(name string) error {
 		return nil
 	case requestexecution.FieldExternalID:
 		m.ClearExternalID()
+		return nil
+	case requestexecution.FieldReasoningEffort:
+		m.ClearReasoningEffort()
 		return nil
 	case requestexecution.FieldResponseBody:
 		m.ClearResponseBody()
@@ -20616,6 +20866,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 		return nil
 	case requestexecution.FieldFormat:
 		m.ResetFormat()
+		return nil
+	case requestexecution.FieldReasoningEffort:
+		m.ResetReasoningEffort()
 		return nil
 	case requestexecution.FieldRequestBody:
 		m.ResetRequestBody()
