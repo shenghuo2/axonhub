@@ -1,0 +1,33 @@
+"""
+A message delivered only to the users who own one of its selected API keys.
+"""
+type Announcement {
+  id: ID!
+  content: String!
+  createdAt: Time!
+  recipientCount: Int!
+}
+
+type AnnouncementRecipientAPIKey {
+  id: ID!
+  name: String!
+}
+
+input CreateAnnouncementInput {
+  content: String!
+  apiKeyIDs: [ID!]!
+}
+
+extend type Query {
+  """All active announcements. Requires user-management read access."""
+  announcements: [Announcement!]!
+  """Announcements targeted to one of the current user's API keys."""
+  myAnnouncements: [Announcement!]!
+  """Selectable API keys for publishing an announcement. Requires user-management write access."""
+  announcementRecipientAPIKeys: [AnnouncementRecipientAPIKey!]!
+}
+
+extend type Mutation {
+  createAnnouncement(input: CreateAnnouncementInput!): Announcement!
+  deleteAnnouncement(id: ID!): Boolean!
+}

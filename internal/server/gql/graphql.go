@@ -55,6 +55,7 @@ type Dependencies struct {
 	AuthService                    *biz.AuthService
 	APIKeyService                  *biz.APIKeyService
 	UserService                    *biz.UserService
+	AnnouncementService            *biz.AnnouncementService
 	SystemService                  *biz.SystemService
 	ChannelService                 *biz.ChannelService
 	RequestService                 *biz.RequestService
@@ -94,6 +95,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.AuthService,
 			deps.APIKeyService,
 			deps.UserService,
+			deps.AnnouncementService,
 			deps.SystemService,
 			deps.ChannelService,
 			deps.RequestService,

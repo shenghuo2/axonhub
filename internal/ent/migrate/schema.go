@@ -93,6 +93,20 @@ var (
 			},
 		},
 	}
+	// AnnouncementsColumns holds the columns for the "announcements" table.
+	AnnouncementsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
+		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
+		{Name: "content", Type: field.TypeString},
+	}
+	// AnnouncementsTable holds the schema information for the "announcements" table.
+	AnnouncementsTable = &schema.Table{
+		Name:       "announcements",
+		Columns:    AnnouncementsColumns,
+		PrimaryKey: []*schema.Column{AnnouncementsColumns[0]},
+	}
 	// ChannelsColumns holds the columns for the "channels" table.
 	ChannelsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -1034,10 +1048,36 @@ var (
 			},
 		},
 	}
+	// AnnouncementAPIKeysColumns holds the columns for the "announcement_api_keys" table.
+	AnnouncementAPIKeysColumns = []*schema.Column{
+		{Name: "announcement_id", Type: field.TypeInt},
+		{Name: "api_key_id", Type: field.TypeInt},
+	}
+	// AnnouncementAPIKeysTable holds the schema information for the "announcement_api_keys" table.
+	AnnouncementAPIKeysTable = &schema.Table{
+		Name:       "announcement_api_keys",
+		Columns:    AnnouncementAPIKeysColumns,
+		PrimaryKey: []*schema.Column{AnnouncementAPIKeysColumns[0], AnnouncementAPIKeysColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "announcement_api_keys_announcement_id",
+				Columns:    []*schema.Column{AnnouncementAPIKeysColumns[0]},
+				RefColumns: []*schema.Column{AnnouncementsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "announcement_api_keys_api_key_id",
+				Columns:    []*schema.Column{AnnouncementAPIKeysColumns[1]},
+				RefColumns: []*schema.Column{APIKeysColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		APIKeysTable,
 		APIKeyProfileTemplatesTable,
+		AnnouncementsTable,
 		ChannelsTable,
 		ChannelModelPricesTable,
 		ChannelModelPriceVersionsTable,
@@ -1061,6 +1101,7 @@ var (
 		UsersTable,
 		UserProjectsTable,
 		UserRolesTable,
+		AnnouncementAPIKeysTable,
 	}
 )
 
@@ -1095,4 +1136,6 @@ func init() {
 	UserProjectsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UserRolesTable.ForeignKeys[0].RefTable = UsersTable
 	UserRolesTable.ForeignKeys[1].RefTable = RolesTable
+	AnnouncementAPIKeysTable.ForeignKeys[0].RefTable = AnnouncementsTable
+	AnnouncementAPIKeysTable.ForeignKeys[1].RefTable = APIKeysTable
 }

@@ -59,13 +59,16 @@ type APIKeyEdges struct {
 	Project *Project `json:"project,omitempty"`
 	// Requests holds the value of the requests edge.
 	Requests []*Request `json:"requests,omitempty"`
+	// Announcements holds the value of the announcements edge.
+	Announcements []*Announcement `json:"announcements,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
 	totalCount [3]map[string]int
 
-	namedRequests map[string][]*Request
+	namedRequests      map[string][]*Request
+	namedAnnouncements map[string][]*Announcement
 }
 
 // UserOrErr returns the User value or an error if the edge
@@ -97,6 +100,15 @@ func (e APIKeyEdges) RequestsOrErr() ([]*Request, error) {
 		return e.Requests, nil
 	}
 	return nil, &NotLoadedError{edge: "requests"}
+}
+
+// AnnouncementsOrErr returns the Announcements value or an error if the edge
+// was not loaded in eager-loading.
+func (e APIKeyEdges) AnnouncementsOrErr() ([]*Announcement, error) {
+	if e.loadedTypes[3] {
+		return e.Announcements, nil
+	}
+	return nil, &NotLoadedError{edge: "announcements"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -239,6 +251,11 @@ func (_m *APIKey) QueryRequests() *RequestQuery {
 	return NewAPIKeyClient(_m.config).QueryRequests(_m)
 }
 
+// QueryAnnouncements queries the "announcements" edge of the APIKey entity.
+func (_m *APIKey) QueryAnnouncements() *AnnouncementQuery {
+	return NewAPIKeyClient(_m.config).QueryAnnouncements(_m)
+}
+
 // Update returns a builder for updating this APIKey.
 // Note that you need to call APIKey.Unwrap() before calling this method if this APIKey
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -322,6 +339,30 @@ func (_m *APIKey) appendNamedRequests(name string, edges ...*Request) {
 		_m.Edges.namedRequests[name] = []*Request{}
 	} else {
 		_m.Edges.namedRequests[name] = append(_m.Edges.namedRequests[name], edges...)
+	}
+}
+
+// NamedAnnouncements returns the Announcements named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *APIKey) NamedAnnouncements(name string) ([]*Announcement, error) {
+	if _m.Edges.namedAnnouncements == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedAnnouncements[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *APIKey) appendNamedAnnouncements(name string, edges ...*Announcement) {
+	if _m.Edges.namedAnnouncements == nil {
+		_m.Edges.namedAnnouncements = make(map[string][]*Announcement)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedAnnouncements[name] = []*Announcement{}
+	} else {
+		_m.Edges.namedAnnouncements[name] = append(_m.Edges.namedAnnouncements[name], edges...)
 	}
 }
 

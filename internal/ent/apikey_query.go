@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/announcement"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -23,16 +24,18 @@ import (
 // APIKeyQuery is the builder for querying APIKey entities.
 type APIKeyQuery struct {
 	config
-	ctx               *QueryContext
-	order             []apikey.OrderOption
-	inters            []Interceptor
-	predicates        []predicate.APIKey
-	withUser          *UserQuery
-	withProject       *ProjectQuery
-	withRequests      *RequestQuery
-	loadTotal         []func(context.Context, []*APIKey) error
-	modifiers         []func(*sql.Selector)
-	withNamedRequests map[string]*RequestQuery
+	ctx                    *QueryContext
+	order                  []apikey.OrderOption
+	inters                 []Interceptor
+	predicates             []predicate.APIKey
+	withUser               *UserQuery
+	withProject            *ProjectQuery
+	withRequests           *RequestQuery
+	withAnnouncements      *AnnouncementQuery
+	loadTotal              []func(context.Context, []*APIKey) error
+	modifiers              []func(*sql.Selector)
+	withNamedRequests      map[string]*RequestQuery
+	withNamedAnnouncements map[string]*AnnouncementQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -128,6 +131,28 @@ func (_q *APIKeyQuery) QueryRequests() *RequestQuery {
 			sqlgraph.From(apikey.Table, apikey.FieldID, selector),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, apikey.RequestsTable, apikey.RequestsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAnnouncements chains the current query on the "announcements" edge.
+func (_q *APIKeyQuery) QueryAnnouncements() *AnnouncementQuery {
+	query := (&AnnouncementClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(apikey.Table, apikey.FieldID, selector),
+			sqlgraph.To(announcement.Table, announcement.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, apikey.AnnouncementsTable, apikey.AnnouncementsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -322,14 +347,15 @@ func (_q *APIKeyQuery) Clone() *APIKeyQuery {
 		return nil
 	}
 	return &APIKeyQuery{
-		config:       _q.config,
-		ctx:          _q.ctx.Clone(),
-		order:        append([]apikey.OrderOption{}, _q.order...),
-		inters:       append([]Interceptor{}, _q.inters...),
-		predicates:   append([]predicate.APIKey{}, _q.predicates...),
-		withUser:     _q.withUser.Clone(),
-		withProject:  _q.withProject.Clone(),
-		withRequests: _q.withRequests.Clone(),
+		config:            _q.config,
+		ctx:               _q.ctx.Clone(),
+		order:             append([]apikey.OrderOption{}, _q.order...),
+		inters:            append([]Interceptor{}, _q.inters...),
+		predicates:        append([]predicate.APIKey{}, _q.predicates...),
+		withUser:          _q.withUser.Clone(),
+		withProject:       _q.withProject.Clone(),
+		withRequests:      _q.withRequests.Clone(),
+		withAnnouncements: _q.withAnnouncements.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -367,6 +393,17 @@ func (_q *APIKeyQuery) WithRequests(opts ...func(*RequestQuery)) *APIKeyQuery {
 		opt(query)
 	}
 	_q.withRequests = query
+	return _q
+}
+
+// WithAnnouncements tells the query-builder to eager-load the nodes that are connected to
+// the "announcements" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *APIKeyQuery) WithAnnouncements(opts ...func(*AnnouncementQuery)) *APIKeyQuery {
+	query := (&AnnouncementClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withAnnouncements = query
 	return _q
 }
 
@@ -454,10 +491,11 @@ func (_q *APIKeyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*APIKe
 	var (
 		nodes       = []*APIKey{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withUser != nil,
 			_q.withProject != nil,
 			_q.withRequests != nil,
+			_q.withAnnouncements != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -500,10 +538,24 @@ func (_q *APIKeyQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*APIKe
 			return nil, err
 		}
 	}
+	if query := _q.withAnnouncements; query != nil {
+		if err := _q.loadAnnouncements(ctx, query, nodes,
+			func(n *APIKey) { n.Edges.Announcements = []*Announcement{} },
+			func(n *APIKey, e *Announcement) { n.Edges.Announcements = append(n.Edges.Announcements, e) }); err != nil {
+			return nil, err
+		}
+	}
 	for name, query := range _q.withNamedRequests {
 		if err := _q.loadRequests(ctx, query, nodes,
 			func(n *APIKey) { n.appendNamedRequests(name) },
 			func(n *APIKey, e *Request) { n.appendNamedRequests(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedAnnouncements {
+		if err := _q.loadAnnouncements(ctx, query, nodes,
+			func(n *APIKey) { n.appendNamedAnnouncements(name) },
+			func(n *APIKey, e *Announcement) { n.appendNamedAnnouncements(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -600,6 +652,67 @@ func (_q *APIKeyQuery) loadRequests(ctx context.Context, query *RequestQuery, no
 			return fmt.Errorf(`unexpected referenced foreign-key "api_key_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
+	}
+	return nil
+}
+func (_q *APIKeyQuery) loadAnnouncements(ctx context.Context, query *AnnouncementQuery, nodes []*APIKey, init func(*APIKey), assign func(*APIKey, *Announcement)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[int]*APIKey)
+	nids := make(map[int]map[*APIKey]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(apikey.AnnouncementsTable)
+		s.Join(joinT).On(s.C(announcement.FieldID), joinT.C(apikey.AnnouncementsPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(apikey.AnnouncementsPrimaryKey[1]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(apikey.AnnouncementsPrimaryKey[1]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullInt64)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := int(values[0].(*sql.NullInt64).Int64)
+				inValue := int(values[1].(*sql.NullInt64).Int64)
+				if nids[inValue] == nil {
+					nids[inValue] = map[*APIKey]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Announcement](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "announcements" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
 	}
 	return nil
 }
@@ -714,6 +827,20 @@ func (_q *APIKeyQuery) WithNamedRequests(name string, opts ...func(*RequestQuery
 		_q.withNamedRequests = make(map[string]*RequestQuery)
 	}
 	_q.withNamedRequests[name] = query
+	return _q
+}
+
+// WithNamedAnnouncements tells the query-builder to eager-load the nodes that are connected to the "announcements"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *APIKeyQuery) WithNamedAnnouncements(name string, opts ...func(*AnnouncementQuery)) *APIKeyQuery {
+	query := (&AnnouncementClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedAnnouncements == nil {
+		_q.withNamedAnnouncements = make(map[string]*AnnouncementQuery)
+	}
+	_q.withNamedAnnouncements[name] = query
 	return _q
 }
 

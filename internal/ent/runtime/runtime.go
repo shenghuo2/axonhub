@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/looplj/axonhub/internal/ent/announcement"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -135,6 +136,45 @@ func init() {
 	apikeyprofiletemplateDescProfile := apikeyprofiletemplateFields[3].Descriptor()
 	// apikeyprofiletemplate.DefaultProfile holds the default value on creation for the profile field.
 	apikeyprofiletemplate.DefaultProfile = apikeyprofiletemplateDescProfile.Default.(*objects.APIKeyProfile)
+	announcementMixin := schema.Announcement{}.Mixin()
+	announcement.Policy = privacy.NewPolicies(schema.Announcement{})
+	announcement.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := announcement.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	announcementMixinHooks1 := announcementMixin[1].Hooks()
+
+	announcement.Hooks[1] = announcementMixinHooks1[0]
+	announcementMixinInters1 := announcementMixin[1].Interceptors()
+	announcement.Interceptors[0] = announcementMixinInters1[0]
+	announcementMixinFields0 := announcementMixin[0].Fields()
+	_ = announcementMixinFields0
+	announcementMixinFields1 := announcementMixin[1].Fields()
+	_ = announcementMixinFields1
+	announcementFields := schema.Announcement{}.Fields()
+	_ = announcementFields
+	// announcementDescCreatedAt is the schema descriptor for created_at field.
+	announcementDescCreatedAt := announcementMixinFields0[0].Descriptor()
+	// announcement.DefaultCreatedAt holds the default value on creation for the created_at field.
+	announcement.DefaultCreatedAt = announcementDescCreatedAt.Default.(func() time.Time)
+	// announcementDescUpdatedAt is the schema descriptor for updated_at field.
+	announcementDescUpdatedAt := announcementMixinFields0[1].Descriptor()
+	// announcement.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	announcement.DefaultUpdatedAt = announcementDescUpdatedAt.Default.(func() time.Time)
+	// announcement.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	announcement.UpdateDefaultUpdatedAt = announcementDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// announcementDescDeletedAt is the schema descriptor for deleted_at field.
+	announcementDescDeletedAt := announcementMixinFields1[0].Descriptor()
+	// announcement.DefaultDeletedAt holds the default value on creation for the deleted_at field.
+	announcement.DefaultDeletedAt = announcementDescDeletedAt.Default.(int)
+	// announcementDescContent is the schema descriptor for content field.
+	announcementDescContent := announcementFields[0].Descriptor()
+	// announcement.ContentValidator is a validator for the "content" field. It is called by the builders before save.
+	announcement.ContentValidator = announcementDescContent.Validators[0].(func(string) error)
 	channelMixin := schema.Channel{}.Mixin()
 	channel.Policy = privacy.NewPolicies(schema.Channel{})
 	channel.Hooks[0] = func(next ent.Mutator) ent.Mutator {

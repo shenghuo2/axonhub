@@ -529,6 +529,29 @@ func HasRequestsWith(preds ...predicate.Request) predicate.APIKey {
 	})
 }
 
+// HasAnnouncements applies the HasEdge predicate on the "announcements" edge.
+func HasAnnouncements() predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, AnnouncementsTable, AnnouncementsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAnnouncementsWith applies the HasEdge predicate on the "announcements" edge with a given conditions (other predicates).
+func HasAnnouncementsWith(preds ...predicate.Announcement) predicate.APIKey {
+	return predicate.APIKey(func(s *sql.Selector) {
+		step := newAnnouncementsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.APIKey) predicate.APIKey {
 	return predicate.APIKey(sql.AndPredicates(predicates...))

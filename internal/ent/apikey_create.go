@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/announcement"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -177,6 +178,21 @@ func (_c *APIKeyCreate) AddRequests(v ...*Request) *APIKeyCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddRequestIDs(ids...)
+}
+
+// AddAnnouncementIDs adds the "announcements" edge to the Announcement entity by IDs.
+func (_c *APIKeyCreate) AddAnnouncementIDs(ids ...int) *APIKeyCreate {
+	_c.mutation.AddAnnouncementIDs(ids...)
+	return _c
+}
+
+// AddAnnouncements adds the "announcements" edges to the Announcement entity.
+func (_c *APIKeyCreate) AddAnnouncements(v ...*Announcement) *APIKeyCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddAnnouncementIDs(ids...)
 }
 
 // Mutation returns the APIKeyMutation object of the builder.
@@ -404,6 +420,22 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.AnnouncementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   apikey.AnnouncementsTable,
+			Columns: apikey.AnnouncementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -11,6 +11,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/looplj/axonhub/internal/ent/announcement"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -51,6 +52,7 @@ const (
 	// Node types.
 	TypeAPIKey                   = "APIKey"
 	TypeAPIKeyProfileTemplate    = "APIKeyProfileTemplate"
+	TypeAnnouncement             = "Announcement"
 	TypeChannel                  = "Channel"
 	TypeChannelModelPrice        = "ChannelModelPrice"
 	TypeChannelModelPriceVersion = "ChannelModelPriceVersion"
@@ -79,33 +81,36 @@ const (
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
 type APIKeyMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *int
-	created_at        *time.Time
-	updated_at        *time.Time
-	deleted_at        *int
-	adddeleted_at     *int
-	key               *string
-	name              *string
-	_type             *apikey.Type
-	status            *apikey.Status
-	scopes            *[]string
-	appendscopes      []string
-	profiles          **objects.APIKeyProfiles
-	allowed_ips       *[]string
-	appendallowed_ips []string
-	clearedFields     map[string]struct{}
-	user              *int
-	cleareduser       bool
-	project           *int
-	clearedproject    bool
-	requests          map[int]struct{}
-	removedrequests   map[int]struct{}
-	clearedrequests   bool
-	done              bool
-	oldValue          func(context.Context) (*APIKey, error)
-	predicates        []predicate.APIKey
+	op                   Op
+	typ                  string
+	id                   *int
+	created_at           *time.Time
+	updated_at           *time.Time
+	deleted_at           *int
+	adddeleted_at        *int
+	key                  *string
+	name                 *string
+	_type                *apikey.Type
+	status               *apikey.Status
+	scopes               *[]string
+	appendscopes         []string
+	profiles             **objects.APIKeyProfiles
+	allowed_ips          *[]string
+	appendallowed_ips    []string
+	clearedFields        map[string]struct{}
+	user                 *int
+	cleareduser          bool
+	project              *int
+	clearedproject       bool
+	requests             map[int]struct{}
+	removedrequests      map[int]struct{}
+	clearedrequests      bool
+	announcements        map[int]struct{}
+	removedannouncements map[int]struct{}
+	clearedannouncements bool
+	done                 bool
+	oldValue             func(context.Context) (*APIKey, error)
+	predicates           []predicate.APIKey
 }
 
 var _ ent.Mutation = (*APIKeyMutation)(nil)
@@ -850,6 +855,60 @@ func (m *APIKeyMutation) ResetRequests() {
 	m.removedrequests = nil
 }
 
+// AddAnnouncementIDs adds the "announcements" edge to the Announcement entity by ids.
+func (m *APIKeyMutation) AddAnnouncementIDs(ids ...int) {
+	if m.announcements == nil {
+		m.announcements = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.announcements[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAnnouncements clears the "announcements" edge to the Announcement entity.
+func (m *APIKeyMutation) ClearAnnouncements() {
+	m.clearedannouncements = true
+}
+
+// AnnouncementsCleared reports if the "announcements" edge to the Announcement entity was cleared.
+func (m *APIKeyMutation) AnnouncementsCleared() bool {
+	return m.clearedannouncements
+}
+
+// RemoveAnnouncementIDs removes the "announcements" edge to the Announcement entity by IDs.
+func (m *APIKeyMutation) RemoveAnnouncementIDs(ids ...int) {
+	if m.removedannouncements == nil {
+		m.removedannouncements = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.announcements, ids[i])
+		m.removedannouncements[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAnnouncements returns the removed IDs of the "announcements" edge to the Announcement entity.
+func (m *APIKeyMutation) RemovedAnnouncementsIDs() (ids []int) {
+	for id := range m.removedannouncements {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// AnnouncementsIDs returns the "announcements" edge IDs in the mutation.
+func (m *APIKeyMutation) AnnouncementsIDs() (ids []int) {
+	for id := range m.announcements {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAnnouncements resets all changes to the "announcements" edge.
+func (m *APIKeyMutation) ResetAnnouncements() {
+	m.announcements = nil
+	m.clearedannouncements = false
+	m.removedannouncements = nil
+}
+
 // Where appends a list predicates to the APIKeyMutation builder.
 func (m *APIKeyMutation) Where(ps ...predicate.APIKey) {
 	m.predicates = append(m.predicates, ps...)
@@ -1212,7 +1271,7 @@ func (m *APIKeyMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *APIKeyMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.user != nil {
 		edges = append(edges, apikey.EdgeUser)
 	}
@@ -1221,6 +1280,9 @@ func (m *APIKeyMutation) AddedEdges() []string {
 	}
 	if m.requests != nil {
 		edges = append(edges, apikey.EdgeRequests)
+	}
+	if m.announcements != nil {
+		edges = append(edges, apikey.EdgeAnnouncements)
 	}
 	return edges
 }
@@ -1243,15 +1305,24 @@ func (m *APIKeyMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case apikey.EdgeAnnouncements:
+		ids := make([]ent.Value, 0, len(m.announcements))
+		for id := range m.announcements {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *APIKeyMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removedrequests != nil {
 		edges = append(edges, apikey.EdgeRequests)
+	}
+	if m.removedannouncements != nil {
+		edges = append(edges, apikey.EdgeAnnouncements)
 	}
 	return edges
 }
@@ -1266,13 +1337,19 @@ func (m *APIKeyMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case apikey.EdgeAnnouncements:
+		ids := make([]ent.Value, 0, len(m.removedannouncements))
+		for id := range m.removedannouncements {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *APIKeyMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.cleareduser {
 		edges = append(edges, apikey.EdgeUser)
 	}
@@ -1281,6 +1358,9 @@ func (m *APIKeyMutation) ClearedEdges() []string {
 	}
 	if m.clearedrequests {
 		edges = append(edges, apikey.EdgeRequests)
+	}
+	if m.clearedannouncements {
+		edges = append(edges, apikey.EdgeAnnouncements)
 	}
 	return edges
 }
@@ -1295,6 +1375,8 @@ func (m *APIKeyMutation) EdgeCleared(name string) bool {
 		return m.clearedproject
 	case apikey.EdgeRequests:
 		return m.clearedrequests
+	case apikey.EdgeAnnouncements:
+		return m.clearedannouncements
 	}
 	return false
 }
@@ -1325,6 +1407,9 @@ func (m *APIKeyMutation) ResetEdge(name string) error {
 		return nil
 	case apikey.EdgeRequests:
 		m.ResetRequests()
+		return nil
+	case apikey.EdgeAnnouncements:
+		m.ResetAnnouncements()
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey edge %s", name)
@@ -2090,6 +2175,623 @@ func (m *APIKeyProfileTemplateMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown APIKeyProfileTemplate edge %s", name)
+}
+
+// AnnouncementMutation represents an operation that mutates the Announcement nodes in the graph.
+type AnnouncementMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	created_at      *time.Time
+	updated_at      *time.Time
+	deleted_at      *int
+	adddeleted_at   *int
+	content         *string
+	clearedFields   map[string]struct{}
+	api_keys        map[int]struct{}
+	removedapi_keys map[int]struct{}
+	clearedapi_keys bool
+	done            bool
+	oldValue        func(context.Context) (*Announcement, error)
+	predicates      []predicate.Announcement
+}
+
+var _ ent.Mutation = (*AnnouncementMutation)(nil)
+
+// announcementOption allows management of the mutation configuration using functional options.
+type announcementOption func(*AnnouncementMutation)
+
+// newAnnouncementMutation creates new mutation for the Announcement entity.
+func newAnnouncementMutation(c config, op Op, opts ...announcementOption) *AnnouncementMutation {
+	m := &AnnouncementMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeAnnouncement,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withAnnouncementID sets the ID field of the mutation.
+func withAnnouncementID(id int) announcementOption {
+	return func(m *AnnouncementMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Announcement
+		)
+		m.oldValue = func(ctx context.Context) (*Announcement, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Announcement.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withAnnouncement sets the old Announcement of the mutation.
+func withAnnouncement(node *Announcement) announcementOption {
+	return func(m *AnnouncementMutation) {
+		m.oldValue = func(context.Context) (*Announcement, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m AnnouncementMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m AnnouncementMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *AnnouncementMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *AnnouncementMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Announcement.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *AnnouncementMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *AnnouncementMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Announcement entity.
+// If the Announcement object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AnnouncementMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *AnnouncementMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *AnnouncementMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *AnnouncementMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Announcement entity.
+// If the Announcement object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AnnouncementMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *AnnouncementMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *AnnouncementMutation) SetDeletedAt(i int) {
+	m.deleted_at = &i
+	m.adddeleted_at = nil
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *AnnouncementMutation) DeletedAt() (r int, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the Announcement entity.
+// If the Announcement object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AnnouncementMutation) OldDeletedAt(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// AddDeletedAt adds i to the "deleted_at" field.
+func (m *AnnouncementMutation) AddDeletedAt(i int) {
+	if m.adddeleted_at != nil {
+		*m.adddeleted_at += i
+	} else {
+		m.adddeleted_at = &i
+	}
+}
+
+// AddedDeletedAt returns the value that was added to the "deleted_at" field in this mutation.
+func (m *AnnouncementMutation) AddedDeletedAt() (r int, exists bool) {
+	v := m.adddeleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *AnnouncementMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	m.adddeleted_at = nil
+}
+
+// SetContent sets the "content" field.
+func (m *AnnouncementMutation) SetContent(s string) {
+	m.content = &s
+}
+
+// Content returns the value of the "content" field in the mutation.
+func (m *AnnouncementMutation) Content() (r string, exists bool) {
+	v := m.content
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContent returns the old "content" field's value of the Announcement entity.
+// If the Announcement object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AnnouncementMutation) OldContent(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContent is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContent requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContent: %w", err)
+	}
+	return oldValue.Content, nil
+}
+
+// ResetContent resets all changes to the "content" field.
+func (m *AnnouncementMutation) ResetContent() {
+	m.content = nil
+}
+
+// AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by ids.
+func (m *AnnouncementMutation) AddAPIKeyIDs(ids ...int) {
+	if m.api_keys == nil {
+		m.api_keys = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.api_keys[ids[i]] = struct{}{}
+	}
+}
+
+// ClearAPIKeys clears the "api_keys" edge to the APIKey entity.
+func (m *AnnouncementMutation) ClearAPIKeys() {
+	m.clearedapi_keys = true
+}
+
+// APIKeysCleared reports if the "api_keys" edge to the APIKey entity was cleared.
+func (m *AnnouncementMutation) APIKeysCleared() bool {
+	return m.clearedapi_keys
+}
+
+// RemoveAPIKeyIDs removes the "api_keys" edge to the APIKey entity by IDs.
+func (m *AnnouncementMutation) RemoveAPIKeyIDs(ids ...int) {
+	if m.removedapi_keys == nil {
+		m.removedapi_keys = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.api_keys, ids[i])
+		m.removedapi_keys[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedAPIKeys returns the removed IDs of the "api_keys" edge to the APIKey entity.
+func (m *AnnouncementMutation) RemovedAPIKeysIDs() (ids []int) {
+	for id := range m.removedapi_keys {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// APIKeysIDs returns the "api_keys" edge IDs in the mutation.
+func (m *AnnouncementMutation) APIKeysIDs() (ids []int) {
+	for id := range m.api_keys {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetAPIKeys resets all changes to the "api_keys" edge.
+func (m *AnnouncementMutation) ResetAPIKeys() {
+	m.api_keys = nil
+	m.clearedapi_keys = false
+	m.removedapi_keys = nil
+}
+
+// Where appends a list predicates to the AnnouncementMutation builder.
+func (m *AnnouncementMutation) Where(ps ...predicate.Announcement) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the AnnouncementMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *AnnouncementMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Announcement, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *AnnouncementMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *AnnouncementMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Announcement).
+func (m *AnnouncementMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *AnnouncementMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.created_at != nil {
+		fields = append(fields, announcement.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, announcement.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, announcement.FieldDeletedAt)
+	}
+	if m.content != nil {
+		fields = append(fields, announcement.FieldContent)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *AnnouncementMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case announcement.FieldCreatedAt:
+		return m.CreatedAt()
+	case announcement.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case announcement.FieldDeletedAt:
+		return m.DeletedAt()
+	case announcement.FieldContent:
+		return m.Content()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *AnnouncementMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case announcement.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case announcement.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case announcement.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
+	case announcement.FieldContent:
+		return m.OldContent(ctx)
+	}
+	return nil, fmt.Errorf("unknown Announcement field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AnnouncementMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case announcement.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case announcement.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case announcement.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
+	case announcement.FieldContent:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContent(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Announcement field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *AnnouncementMutation) AddedFields() []string {
+	var fields []string
+	if m.adddeleted_at != nil {
+		fields = append(fields, announcement.FieldDeletedAt)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *AnnouncementMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case announcement.FieldDeletedAt:
+		return m.AddedDeletedAt()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AnnouncementMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case announcement.FieldDeletedAt:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDeletedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Announcement numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *AnnouncementMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *AnnouncementMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *AnnouncementMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Announcement nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *AnnouncementMutation) ResetField(name string) error {
+	switch name {
+	case announcement.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case announcement.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case announcement.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
+	case announcement.FieldContent:
+		m.ResetContent()
+		return nil
+	}
+	return fmt.Errorf("unknown Announcement field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *AnnouncementMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.api_keys != nil {
+		edges = append(edges, announcement.EdgeAPIKeys)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *AnnouncementMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case announcement.EdgeAPIKeys:
+		ids := make([]ent.Value, 0, len(m.api_keys))
+		for id := range m.api_keys {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *AnnouncementMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedapi_keys != nil {
+		edges = append(edges, announcement.EdgeAPIKeys)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *AnnouncementMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case announcement.EdgeAPIKeys:
+		ids := make([]ent.Value, 0, len(m.removedapi_keys))
+		for id := range m.removedapi_keys {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *AnnouncementMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedapi_keys {
+		edges = append(edges, announcement.EdgeAPIKeys)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *AnnouncementMutation) EdgeCleared(name string) bool {
+	switch name {
+	case announcement.EdgeAPIKeys:
+		return m.clearedapi_keys
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *AnnouncementMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Announcement unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *AnnouncementMutation) ResetEdge(name string) error {
+	switch name {
+	case announcement.EdgeAPIKeys:
+		m.ResetAPIKeys()
+		return nil
+	}
+	return fmt.Errorf("unknown Announcement edge %s", name)
 }
 
 // ChannelMutation represents an operation that mutates the Channel nodes in the graph.

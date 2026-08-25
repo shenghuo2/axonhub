@@ -49,6 +49,8 @@ const (
 	EdgeProject = "project"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
 	EdgeRequests = "requests"
+	// EdgeAnnouncements holds the string denoting the announcements edge name in mutations.
+	EdgeAnnouncements = "announcements"
 	// Table holds the table name of the apikey in the database.
 	Table = "api_keys"
 	// UserTable is the table that holds the user relation/edge.
@@ -72,6 +74,11 @@ const (
 	RequestsInverseTable = "requests"
 	// RequestsColumn is the table column denoting the requests relation/edge.
 	RequestsColumn = "api_key_id"
+	// AnnouncementsTable is the table that holds the announcements relation/edge. The primary key declared below.
+	AnnouncementsTable = "announcement_api_keys"
+	// AnnouncementsInverseTable is the table name for the Announcement entity.
+	// It exists in this package in order to avoid circular dependency with the "announcement" package.
+	AnnouncementsInverseTable = "announcements"
 )
 
 // Columns holds all SQL columns for apikey fields.
@@ -90,6 +97,12 @@ var Columns = []string{
 	FieldProfiles,
 	FieldAllowedIps,
 }
+
+var (
+	// AnnouncementsPrimaryKey and AnnouncementsColumn2 are the table columns denoting the
+	// primary key for the announcements relation (M2M).
+	AnnouncementsPrimaryKey = []string{"announcement_id", "api_key_id"}
+)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -263,6 +276,20 @@ func ByRequests(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newRequestsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByAnnouncementsCount orders the results by announcements count.
+func ByAnnouncementsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newAnnouncementsStep(), opts...)
+	}
+}
+
+// ByAnnouncements orders the results by announcements terms.
+func ByAnnouncements(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newAnnouncementsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newUserStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -282,6 +309,13 @@ func newRequestsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(RequestsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, RequestsTable, RequestsColumn),
+	)
+}
+func newAnnouncementsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(AnnouncementsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, AnnouncementsTable, AnnouncementsPrimaryKey...),
 	)
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/announcement"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -144,6 +145,33 @@ func (f TraverseAPIKeyProfileTemplate) Traverse(ctx context.Context, q ent.Query
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.APIKeyProfileTemplateQuery", q)
+}
+
+// The AnnouncementFunc type is an adapter to allow the use of ordinary function as a Querier.
+type AnnouncementFunc func(context.Context, *ent.AnnouncementQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f AnnouncementFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.AnnouncementQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.AnnouncementQuery", q)
+}
+
+// The TraverseAnnouncement type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseAnnouncement func(context.Context, *ent.AnnouncementQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseAnnouncement) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseAnnouncement) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.AnnouncementQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.AnnouncementQuery", q)
 }
 
 // The ChannelFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -774,6 +802,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.APIKeyQuery, predicate.APIKey, apikey.OrderOption]{typ: ent.TypeAPIKey, tq: q}, nil
 	case *ent.APIKeyProfileTemplateQuery:
 		return &query[*ent.APIKeyProfileTemplateQuery, predicate.APIKeyProfileTemplate, apikeyprofiletemplate.OrderOption]{typ: ent.TypeAPIKeyProfileTemplate, tq: q}, nil
+	case *ent.AnnouncementQuery:
+		return &query[*ent.AnnouncementQuery, predicate.Announcement, announcement.OrderOption]{typ: ent.TypeAnnouncement, tq: q}, nil
 	case *ent.ChannelQuery:
 		return &query[*ent.ChannelQuery, predicate.Channel, channel.OrderOption]{typ: ent.TypeChannel, tq: q}, nil
 	case *ent.ChannelModelPriceQuery:

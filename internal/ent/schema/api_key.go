@@ -104,6 +104,9 @@ func (APIKey) Edges() []ent.Edge {
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 				entgql.RelayConnection(),
 			),
+		edge.From("announcements", Announcement.Type).
+			Ref("api_keys").
+			Annotations(entgql.Skip(entgql.SkipAll)),
 	}
 }
 

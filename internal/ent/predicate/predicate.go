@@ -12,6 +12,9 @@ type APIKey func(*sql.Selector)
 // APIKeyProfileTemplate is the predicate function for apikeyprofiletemplate builders.
 type APIKeyProfileTemplate func(*sql.Selector)
 
+// Announcement is the predicate function for announcement builders.
+type Announcement func(*sql.Selector)
+
 // Channel is the predicate function for channel builders.
 type Channel func(*sql.Selector)
 

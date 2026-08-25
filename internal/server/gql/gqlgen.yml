@@ -3,6 +3,7 @@ schema:
   # axonhub.graphql must be loaded before ent.graphql because it defines DisabledAPIKey
   # which is referenced by the disabled_api_keys field in Channel schema
   - axonhub.graphql
+  - announcement.graphql
   - ent.graphql
   - dashboard.graphql
   - scopes.graphql
@@ -79,6 +80,12 @@ models:
   Node:
     model:
       - github.com/looplj/axonhub/internal/ent.Noder
+  Announcement:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.Announcement
+  AnnouncementRecipientAPIKey:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.AnnouncementRecipientAPIKey
   Cursor:
     model:
       - github.com/looplj/axonhub/internal/server/gql.Cursor

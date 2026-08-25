@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/dialect/sql/sqljson"
 	"entgo.io/ent/schema/field"
+	"github.com/looplj/axonhub/internal/ent/announcement"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
@@ -178,6 +179,21 @@ func (_u *APIKeyUpdate) AddRequests(v ...*Request) *APIKeyUpdate {
 	return _u.AddRequestIDs(ids...)
 }
 
+// AddAnnouncementIDs adds the "announcements" edge to the Announcement entity by IDs.
+func (_u *APIKeyUpdate) AddAnnouncementIDs(ids ...int) *APIKeyUpdate {
+	_u.mutation.AddAnnouncementIDs(ids...)
+	return _u
+}
+
+// AddAnnouncements adds the "announcements" edges to the Announcement entity.
+func (_u *APIKeyUpdate) AddAnnouncements(v ...*Announcement) *APIKeyUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAnnouncementIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdate) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -202,6 +218,27 @@ func (_u *APIKeyUpdate) RemoveRequests(v ...*Request) *APIKeyUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveRequestIDs(ids...)
+}
+
+// ClearAnnouncements clears all "announcements" edges to the Announcement entity.
+func (_u *APIKeyUpdate) ClearAnnouncements() *APIKeyUpdate {
+	_u.mutation.ClearAnnouncements()
+	return _u
+}
+
+// RemoveAnnouncementIDs removes the "announcements" edge to Announcement entities by IDs.
+func (_u *APIKeyUpdate) RemoveAnnouncementIDs(ids ...int) *APIKeyUpdate {
+	_u.mutation.RemoveAnnouncementIDs(ids...)
+	return _u
+}
+
+// RemoveAnnouncements removes "announcements" edges to Announcement entities.
+func (_u *APIKeyUpdate) RemoveAnnouncements(v ...*Announcement) *APIKeyUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAnnouncementIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -369,6 +406,51 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.AnnouncementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   apikey.AnnouncementsTable,
+			Columns: apikey.AnnouncementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAnnouncementsIDs(); len(nodes) > 0 && !_u.mutation.AnnouncementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   apikey.AnnouncementsTable,
+			Columns: apikey.AnnouncementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.AnnouncementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   apikey.AnnouncementsTable,
+			Columns: apikey.AnnouncementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -544,6 +626,21 @@ func (_u *APIKeyUpdateOne) AddRequests(v ...*Request) *APIKeyUpdateOne {
 	return _u.AddRequestIDs(ids...)
 }
 
+// AddAnnouncementIDs adds the "announcements" edge to the Announcement entity by IDs.
+func (_u *APIKeyUpdateOne) AddAnnouncementIDs(ids ...int) *APIKeyUpdateOne {
+	_u.mutation.AddAnnouncementIDs(ids...)
+	return _u
+}
+
+// AddAnnouncements adds the "announcements" edges to the Announcement entity.
+func (_u *APIKeyUpdateOne) AddAnnouncements(v ...*Announcement) *APIKeyUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddAnnouncementIDs(ids...)
+}
+
 // Mutation returns the APIKeyMutation object of the builder.
 func (_u *APIKeyUpdateOne) Mutation() *APIKeyMutation {
 	return _u.mutation
@@ -568,6 +665,27 @@ func (_u *APIKeyUpdateOne) RemoveRequests(v ...*Request) *APIKeyUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveRequestIDs(ids...)
+}
+
+// ClearAnnouncements clears all "announcements" edges to the Announcement entity.
+func (_u *APIKeyUpdateOne) ClearAnnouncements() *APIKeyUpdateOne {
+	_u.mutation.ClearAnnouncements()
+	return _u
+}
+
+// RemoveAnnouncementIDs removes the "announcements" edge to Announcement entities by IDs.
+func (_u *APIKeyUpdateOne) RemoveAnnouncementIDs(ids ...int) *APIKeyUpdateOne {
+	_u.mutation.RemoveAnnouncementIDs(ids...)
+	return _u
+}
+
+// RemoveAnnouncements removes "announcements" edges to Announcement entities.
+func (_u *APIKeyUpdateOne) RemoveAnnouncements(v ...*Announcement) *APIKeyUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveAnnouncementIDs(ids...)
 }
 
 // Where appends a list predicates to the APIKeyUpdate builder.
@@ -765,6 +883,51 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(request.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.AnnouncementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   apikey.AnnouncementsTable,
+			Columns: apikey.AnnouncementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedAnnouncementsIDs(); len(nodes) > 0 && !_u.mutation.AnnouncementsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   apikey.AnnouncementsTable,
+			Columns: apikey.AnnouncementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.AnnouncementsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   apikey.AnnouncementsTable,
+			Columns: apikey.AnnouncementsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(announcement.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

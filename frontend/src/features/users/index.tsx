@@ -11,6 +11,7 @@ import { UsersPrimaryButtons } from './components/users-primary-buttons';
 import { UsersTable } from './components/users-table';
 import UsersProvider from './context/users-context';
 import { useUsers } from './data/users';
+import { AnnouncementAdminPanel } from '@/features/announcements/components/announcement-admin-panel';
 
 function UsersContent() {
   const { t } = useTranslation();
@@ -78,23 +79,26 @@ function UsersContent() {
   };
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
-      <UsersTable
-        data={data?.edges?.map((edge) => edge.node) || []}
-        columns={columns}
-        loading={isLoading}
-        pageInfo={data?.pageInfo}
-        pageSize={pageSize}
-        onNextPage={handleNextPage}
-        onPreviousPage={handlePreviousPage}
-        onPageSizeChange={handlePageSizeChange}
-        nameFilter={nameFilter}
-        statusFilter={statusFilter}
-        roleFilter={roleFilter}
-        onNameFilterChange={setNameFilter}
-        onStatusFilterChange={setStatusFilter}
-        onRoleFilterChange={setRoleFilter}
-      />
+    <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-hidden'>
+      <AnnouncementAdminPanel />
+      <div className='min-h-0 flex-1 overflow-hidden'>
+        <UsersTable
+          data={data?.edges?.map((edge) => edge.node) || []}
+          columns={columns}
+          loading={isLoading}
+          pageInfo={data?.pageInfo}
+          pageSize={pageSize}
+          onNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+          onPageSizeChange={handlePageSizeChange}
+          nameFilter={nameFilter}
+          statusFilter={statusFilter}
+          roleFilter={roleFilter}
+          onNameFilterChange={setNameFilter}
+          onStatusFilterChange={setStatusFilter}
+          onRoleFilterChange={setRoleFilter}
+        />
+      </div>
     </div>
   );
 }

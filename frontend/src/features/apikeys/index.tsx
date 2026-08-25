@@ -15,6 +15,7 @@ import { ApiKeysTable } from './components/apikeys-table';
 import ApiKeysProvider from './context/apikeys-context';
 import { useApiKeys } from './data/apikeys';
 import { ApiKeyType } from './data/schema';
+import { MyAnnouncements } from '@/features/announcements/components/my-announcements';
 
 type ApiKeyTabKey = ApiKeyType | 'all';
 
@@ -200,7 +201,8 @@ function ApiKeysContent() {
   );
 
   return (
-    <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+    <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-hidden'>
+      <MyAnnouncements />
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
         <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-4 rounded-2xl border'>
           <TabsTrigger value='all' data-value='all'>

@@ -28,6 +28,7 @@ type Resolver struct {
 	authService                    *biz.AuthService
 	apiKeyService                  *biz.APIKeyService
 	userService                    *biz.UserService
+	announcementService            *biz.AnnouncementService
 	systemService                  *biz.SystemService
 	channelService                 *biz.ChannelService
 	requestService                 *biz.RequestService
@@ -61,6 +62,7 @@ func NewSchema(
 	authService *biz.AuthService,
 	apiKeyService *biz.APIKeyService,
 	userService *biz.UserService,
+	announcementService *biz.AnnouncementService,
 	systemService *biz.SystemService,
 	channelService *biz.ChannelService,
 	requestService *biz.RequestService,
@@ -95,6 +97,7 @@ func NewSchema(
 			authService:                    authService,
 			apiKeyService:                  apiKeyService,
 			userService:                    userService,
+			announcementService:            announcementService,
 			systemService:                  systemService,
 			channelService:                 channelService,
 			requestService:                 requestService,
